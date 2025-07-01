@@ -7,6 +7,6 @@ pub fn api_routes() -> axum::Router<AppState> {
         .route("/health", get(health_check))
 }
 
-async fn health_check() -> Html<String> {
-    Html("<h1>API is healthy</h1>".to_string())
+async fn health_check() -> Html<&'static str> {
+    Html("<h1>API is healthy</h1>")
 }
