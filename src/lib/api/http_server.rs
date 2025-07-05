@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, sync::Arc};
 
 use anyhow::Context;
 use tokio::net;
@@ -8,11 +8,13 @@ use tower_http::{
 };
 use utoipa_swagger_ui::SwaggerUi;
 
-use crate::api::routes::{api_routes, combine_openapi};
+use crate::{api::routes::{api_routes, combine_openapi}, users::domain::UserRepository};
 
 // State that every handlers share (used for services)
 #[derive(Debug, Clone)]
-pub struct AppState {}
+pub struct AppState<UR: UserRepository> {
+    user_repository: Arc<UR>,
+}
 
 pub struct HttpServer {
     router: axum::Router,
@@ -20,24 +22,12 @@ pub struct HttpServer {
 }
 
 impl HttpServer {
-    pub async fn new() -> anyhow::Result<Self> {
+    pub async fn new<UR: UserRepository + Clone + Send + Sync + 'static>(user_repository: UR) -> anyhow::Result<Self> {
         dotenvy::dotenv().context("Failed to load .env file")?;
 
-        let db_url =
-            env::var("DATABASE_URL").context("Failed to read DATABASE_URL from environment")?;
-
-        // Connect to the database
-        let connection = sqlx::PgPool::connect(&db_url)
-            .await
-            .context("Failed to connect to the database")?;
-
-        // Run database migrations
-        sqlx::migrate!("./migrations")
-            .run(&mut connection.acquire().await?)
-            .await
-            .context("Failed to run database migrations")?;
-
-        let state = AppState {};
+        let state = AppState {
+            user_repository: Arc::new(user_repository),
+        };
 
         // Initialize tracing for the application
         tracing_subscriber::fmt::init();

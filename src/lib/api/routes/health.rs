@@ -1,15 +1,18 @@
-use axum::response::Html;
+use axum::Json;
+use serde_json::json;
 
 #[utoipa::path(
     get,
-    path = "/health",
+    path = "/healthz",
     description = "Health Check Endpoint",
     responses(
         (status = 200, description = "Health Check Successful", body = String, example = "<h1>API is healthy</h1>"),
     )
 )]
-pub async fn health_check() -> Html<&'static str> {
-    Html("<h1>API is healthy</h1>")
+pub async fn health_check() -> Json<serde_json::Value> {
+    Json(json!({
+        "status": "healthy"
+    }))
 }
 
 pub mod swagger {
