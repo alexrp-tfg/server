@@ -7,9 +7,10 @@ use diesel::{
     r2d2::{ConnectionManager, Pool},
 };
 
+use crate::users::infrastructure::{ CreateUserRow, UserRow};
 use crate::{
     persistence::domain::schema,
-    users::domain::{User, UserRepository, user::CreateUser},
+    users::domain::{User, UserRepository},
 };
 
 // TODO: Change to use a pool instead of a single connection, as it is not thread-safe
@@ -25,7 +26,7 @@ impl DieselUserRepository {
 }
 
 impl UserRepository for DieselUserRepository {
-    fn create_user(&self, user: CreateUser) -> Result<User, DieselError> {
+    fn create_user(&self, user: CreateUserRow) -> Result<User, DieselError> {
         use schema::users::dsl::*;
 
         // Get a connection from the pool
@@ -36,15 +37,15 @@ impl UserRepository for DieselUserRepository {
             )
         })?;
 
-        let new_user = CreateUser {
+        let new_user = CreateUserRow {
             username: &user.username,
             password: &user.password,
         };
 
         let created_user = diesel::insert_into(users)
             .values(&new_user)
-            .get_result::<User>(&mut *conn)?;
+            .get_result::<UserRow>(&mut *conn)?;
 
-        Ok(created_user)
+        Ok(created_user.into())
     }
 }

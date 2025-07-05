@@ -13,16 +13,6 @@ async fn main() -> anyhow::Result<()> {
 
     let user_repository = DieselUserRepository::new(connection);
 
-    let created_user = user_repository.create_user(CreateUser {
-        username: "admin",
-        password: "admin"
-    });
-
-    match created_user {
-        Ok(user) => println!("User created: {:?}", user),
-        Err(e) => eprintln!("Error creating user: {}", e),
-    }
-
     let server = HttpServer::new(user_repository).await?;
 
     server.run().await
