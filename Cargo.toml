@@ -23,11 +23,12 @@ tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["fmt", "env-filter"] }
 dotenvy = "0.15.7"
 utoipa-axum = "0.2.0"
-utoipa = { version = "5.4.0", features = ["axum_extras"] }
+utoipa = { version = "5.4.0", features = ["axum_extras", "chrono", "uuid"] }
 utoipa-swagger-ui = { version = "9.0.2", features = ["axum"] }
 diesel = { version = "2.2.11", features = ["postgres", "chrono", "uuid", "r2d2"] }
-chrono = "0.4.41"
-uuid = { version = "1.17.0", features = ["v4"] }
+chrono = { version = "0.4.41", features = ["serde"] }
+uuid = { version = "1.17.0", features = ["serde", "v4"] }
 
 [dev-dependencies]
+axum = { version = "0.8.4", features = ["macros"] }
 httpc-test = "0.1.10"

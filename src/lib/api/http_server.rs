@@ -22,7 +22,7 @@ pub struct HttpServer {
 }
 
 impl HttpServer {
-    pub async fn new<UR: UserRepository + Clone + Send + Sync + 'static>(user_repository: UR) -> anyhow::Result<Self> {
+    pub async fn new(user_repository: impl UserRepository) -> anyhow::Result<Self> {
         dotenvy::dotenv().context("Failed to load .env file")?;
 
         let state = AppState {

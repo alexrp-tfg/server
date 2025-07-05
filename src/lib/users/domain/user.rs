@@ -1,6 +1,8 @@
+use serde::Serialize;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
-#[derive(Debug)]
+#[derive(Debug, ToSchema, Serialize)]
 pub struct User {
     pub id: Uuid,
     pub username: String,

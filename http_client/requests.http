@@ -3,3 +3,12 @@
 ### Health Check
 GET {{url}}
  /healthz
+
+### Create a new user
+POST {{url}}/users
+Content-Type: application/json
+
+{
+	"username": "Prueba",
+	"password": "1234"
+}

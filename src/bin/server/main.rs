@@ -1,7 +1,10 @@
 use std::sync::Arc;
 
-use diesel::{r2d2::{ConnectionManager, Pool}, PgConnection};
-use lib::{api::http_server::HttpServer, users::{domain::{user::CreateUser, UserRepository}, infrastructure::DieselUserRepository}};
+use diesel::{
+    PgConnection,
+    r2d2::{ConnectionManager, Pool},
+};
+use lib::{api::http_server::HttpServer, users::infrastructure::DieselUserRepository};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -24,7 +27,8 @@ fn establish_connection() -> Pool<ConnectionManager<PgConnection>> {
 
     let manager = ConnectionManager::<PgConnection>::new(&database_url);
 
-    Pool::builder()
-        .build(manager)
-        .expect(&format!("Error creating connection pool for {}", &database_url))
+    Pool::builder().build(manager).expect(&format!(
+        "Error creating connection pool for {}",
+        &database_url
+    ))
 }

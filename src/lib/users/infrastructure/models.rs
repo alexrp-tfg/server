@@ -1,4 +1,6 @@
 use diesel::prelude::*;
+use serde::Deserialize;
+use utoipa::ToSchema;
 use uuid::Uuid;
 use crate::persistence::domain::schema::users;
 
@@ -12,9 +14,9 @@ pub struct UserRow {
     pub updated_at: Option<chrono::NaiveDateTime>,
 }
 
-#[derive(Insertable)]
+#[derive(Insertable, Deserialize, ToSchema)]
 #[diesel(table_name = users)]
-pub struct CreateUserRow<'a> {
-    pub username: &'a str,
-    pub password: &'a str,
+pub struct CreateUserRow {
+    pub username: String,
+    pub password: String,
 }

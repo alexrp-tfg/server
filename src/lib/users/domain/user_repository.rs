@@ -1,5 +1,5 @@
-use crate::users::domain::{user::CreateUser, User};
+use crate::users::{domain::User, infrastructure::CreateUserRow};
 
-pub trait UserRepository {
-    fn create_user(&self, user: CreateUser) -> Result<User, diesel::result::Error>;
+pub trait UserRepository: Clone + Send + Sync + 'static {
+    fn create_user(&self, user: CreateUserRow) -> Result<User, diesel::result::Error>;
 }

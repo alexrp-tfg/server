@@ -38,8 +38,8 @@ impl UserRepository for DieselUserRepository {
         })?;
 
         let new_user = CreateUserRow {
-            username: &user.username,
-            password: &user.password,
+            username: user.username,
+            password: user.password,
         };
 
         let created_user = diesel::insert_into(users)
