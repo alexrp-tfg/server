@@ -26,7 +26,7 @@ impl DieselUserRepository {
 }
 
 impl UserRepository for DieselUserRepository {
-    fn create_user(&self, user: CreateUserRow) -> Result<User, DieselError> {
+    async fn create_user(&self, new_user: &CreateUserRow) -> Result<User, DieselError> {
         use schema::users::dsl::*;
 
         // Get a connection from the pool
@@ -37,13 +37,8 @@ impl UserRepository for DieselUserRepository {
             )
         })?;
 
-        let new_user = CreateUserRow {
-            username: user.username,
-            password: user.password,
-        };
-
         let created_user = diesel::insert_into(users)
-            .values(&new_user)
+            .values(new_user)
             .get_result::<UserRow>(&mut *conn)?;
 
         Ok(created_user.into())

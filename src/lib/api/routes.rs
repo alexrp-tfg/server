@@ -12,10 +12,11 @@ pub fn api_routes<UR: UserRepository>() -> axum::Router<AppState<UR>>
 {
     axum::Router::new()
         .route("/healthz", get(health_check))
-        .nest("/users", users::routes::api_routes())
+        .nest("/users", users::routes::api_routes::<UR>())
 }
 
 pub fn combine_openapi() -> utoipa::openapi::OpenApi {
-    let doc = health::swagger::ApiDoc::openapi();
+    let doc = health::swagger::ApiDoc::openapi()
+        .nest("/users", users::routes::ApiDoc::openapi());
     doc
 }

@@ -13,7 +13,7 @@ use crate::{api::routes::{api_routes, combine_openapi}, users::domain::UserRepos
 // State that every handlers share (used for services)
 #[derive(Debug, Clone)]
 pub struct AppState<UR: UserRepository> {
-    user_repository: Arc<UR>,
+    pub user_repository: Arc<UR>,
 }
 
 pub struct HttpServer {
