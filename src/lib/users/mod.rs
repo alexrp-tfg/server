@@ -1,8 +1,13 @@
 // Domain
 pub mod domain;
-pub mod interface;
 
 pub use domain::user_repository;
 
+// Application
+pub mod application;
+
 // Infrastructure
 pub mod infrastructure;
+
+// Interface
+pub mod interface;

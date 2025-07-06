@@ -2,7 +2,16 @@ use axum::{Json, response::IntoResponse};
 use serde::Serialize;
 use utoipa::ToSchema;
 
-use crate::api::domain::response_body::ApiResponseBody;
+#[derive(Debug, ToSchema, Serialize, Clone, PartialEq, Eq)]
+pub struct ApiErrorBody {
+    pub message: String,
+}
+
+impl ApiErrorBody {
+    pub fn new(message: String) -> Self {
+        Self { message }
+    }
+}
 
 #[derive(Debug, ToSchema, Serialize)]
 pub enum ApiError {
@@ -20,29 +29,29 @@ impl IntoResponse for ApiError {
         match self {
             InternalServerError(message) => (
                 axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ApiResponseBody::new(
+                Json(ApiErrorBody::new(
                     message,
                 )),
             )
                 .into_response(),
             NotFoundError(message) => (
                 axum::http::StatusCode::NOT_FOUND,
-                Json(ApiResponseBody::new(message)),
+                Json(ApiErrorBody::new(message)),
             )
                 .into_response(),
             BadRequestError(message) => (
                 axum::http::StatusCode::BAD_REQUEST,
-                Json(ApiResponseBody::new(message)),
+                Json(ApiErrorBody::new(message)),
             )
                 .into_response(),
             UnauthorizedError(message) => (
                 axum::http::StatusCode::UNAUTHORIZED,
-                Json(ApiResponseBody::new(message)),
+                Json(ApiErrorBody::new(message)),
             )
                 .into_response(),
             ConflictError(message) => (
                 axum::http::StatusCode::CONFLICT,
-                Json(ApiResponseBody::new(message)),
+                Json(ApiErrorBody::new(message)),
             )
                 .into_response(),
         }

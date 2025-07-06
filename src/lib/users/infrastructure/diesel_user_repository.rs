@@ -13,7 +13,6 @@ use crate::{
     users::domain::{User, UserRepository},
 };
 
-// TODO: Change to use a pool instead of a single connection, as it is not thread-safe
 #[derive(Clone)]
 pub struct DieselUserRepository {
     pool: Arc<Pool<ConnectionManager<PgConnection>>>,

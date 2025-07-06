@@ -8,7 +8,7 @@ use crate::{
     },
     users::{
         domain::{User, UserRepository},
-        infrastructure::CreateUserRow,
+        infrastructure::CreateUserRow, interface::http::extractors::validated_json::ValidatedJson,
     },
 };
 
@@ -17,11 +17,12 @@ use crate::{
     path = "/",
     description = "Create a new user",
     tag = "users",
+    request_body = CreateUserRow,
     responses(
         (status = 201, description = "User created correctly", body = ApiResponseBody<User>),
-        (status = 409, description = "Failed to create user", body = ApiResponseBody<String>,
+        (status = 409, description = "Failed to create user, user already exists", body = ApiResponseBody<String>,
             example = json!({
-            "data": "Failed to create user"
+            "message": "Failed to create user, user already exists"
         })),
     )
 )]
@@ -29,7 +30,7 @@ use crate::{
 // logic there
 pub async fn create_user<UR: UserRepository>(
     State(state): State<AppState<UR>>,
-    Json(body): Json<CreateUserRow>,
+    ValidatedJson(body): ValidatedJson<CreateUserRow>,
 ) -> Result<(StatusCode, Json<ApiResponseBody<User>>), ApiError> {
     let created_user = state.user_repository.create_user(&body).await;
 
@@ -38,7 +39,7 @@ pub async fn create_user<UR: UserRepository>(
             StatusCode::CREATED,
             ApiResponseBody::new(user).into(),
         )),
-        Err(_) => Err(ApiError::ConflictError("Failed to create user".to_string())),
+        Err(_) => Err(ApiError::ConflictError("Failed to create user, user already exists".to_string())),
     }
 }
 
