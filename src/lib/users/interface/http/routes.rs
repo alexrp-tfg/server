@@ -1,4 +1,4 @@
-use axum::{Json, extract::State, http::StatusCode, routing::post};
+use axum::{extract::State, http::StatusCode, response::IntoResponse, routing::post, Json};
 use utoipa::OpenApi;
 
 use crate::{
@@ -7,8 +7,7 @@ use crate::{
         http_server::AppState,
     },
     users::{
-        domain::{User, UserRepository},
-        infrastructure::CreateUserRow, interface::http::extractors::validated_json::ValidatedJson,
+        application::commands::create_user::{create_user_command_handler, CreateUserCommand}, domain::{User, UserRepository, UserRepositoryError}, infrastructure::CreateUserRow, interface::http::extractors::validated_json::ValidatedJson
     },
 };
 
@@ -26,20 +25,19 @@ use crate::{
         })),
     )
 )]
-// TODO: This is the endpoint definition, create command and command handler for this and move the
-// logic there
 pub async fn create_user<UR: UserRepository>(
     State(state): State<AppState<UR>>,
-    ValidatedJson(body): ValidatedJson<CreateUserRow>,
+    ValidatedJson(body): ValidatedJson<CreateUserCommand>,
 ) -> Result<(StatusCode, Json<ApiResponseBody<User>>), ApiError> {
-    let created_user = state.user_repository.create_user(&body).await;
-
-    match created_user {
+    match create_user_command_handler(body, state.user_repository.as_ref()).await {
         Ok(user) => Ok((
             StatusCode::CREATED,
             ApiResponseBody::new(user).into(),
         )),
-        Err(_) => Err(ApiError::ConflictError("Failed to create user, user already exists".to_string())),
+        Err(err) => match err {
+            UserRepositoryError::UserAlreadyExists => Err(ApiError::ConflictError(err.to_string())),
+            UserRepositoryError::DatabaseError => Err(ApiError::InternalServerError(err.to_string())),
+        },
     }
 }
 

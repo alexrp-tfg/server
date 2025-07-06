@@ -1,9 +1,8 @@
 use diesel::prelude::*;
-use serde::{Deserialize, Deserializer};
+use serde::Deserialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
-use validator::Validate;
-use crate::persistence::domain::schema::users;
+use crate::{persistence::domain::schema::users, users::domain::user::NewUser};
 
 #[derive(Queryable, AsChangeset, Debug)]
 #[diesel(table_name = users)]
@@ -15,10 +14,18 @@ pub struct UserRow {
     pub updated_at: Option<chrono::NaiveDateTime>,
 }
 
-#[derive(Insertable, ToSchema, Validate, Deserialize)]
+#[derive(Insertable, ToSchema, Deserialize)]
 #[diesel(table_name = users)]
-// TODO: Define the validation rules for the struct in a separate command file
 pub struct CreateUserRow {
     pub username: String,
     pub password: String,
+}
+
+impl From<NewUser> for CreateUserRow {
+    fn from(command: NewUser) -> Self {
+        CreateUserRow {
+            username: command.username,
+            password: command.password,
+        }
+    }
 }

@@ -7,7 +7,9 @@ use diesel::{
     r2d2::{ConnectionManager, Pool},
 };
 
-use crate::users::infrastructure::{ CreateUserRow, UserRow};
+use crate::users::domain::user::NewUser;
+use crate::users::infrastructure::{CreateUserRow, UserRow};
+use crate::users::user_repository::UserRepositoryError;
 use crate::{
     persistence::domain::schema,
     users::domain::{User, UserRepository},
@@ -25,20 +27,25 @@ impl DieselUserRepository {
 }
 
 impl UserRepository for DieselUserRepository {
-    async fn create_user(&self, new_user: &CreateUserRow) -> Result<User, DieselError> {
+    async fn create_user(&self, new_user: NewUser) -> Result<User, UserRepositoryError> {
         use schema::users::dsl::*;
 
         // Get a connection from the pool
-        let mut conn = self.pool.get().map_err(|e| {
-            DieselError::DatabaseError(
-                diesel::result::DatabaseErrorKind::UnableToSendCommand,
-                Box::new(e.to_string()),
-            )
-        })?;
+        let mut conn = self
+            .pool
+            .get()
+            .map_err(|_| UserRepositoryError::DatabaseError)?;
 
         let created_user = diesel::insert_into(users)
-            .values(new_user)
-            .get_result::<UserRow>(&mut *conn)?;
+            .values(CreateUserRow::from(new_user))
+            .get_result::<UserRow>(&mut *conn)
+            .map_err(|e| match e {
+                DieselError::DatabaseError(
+                    diesel::result::DatabaseErrorKind::UniqueViolation,
+                    _,
+                ) => UserRepositoryError::UserAlreadyExists,
+                _ => UserRepositoryError::DatabaseError,
+            })?;
 
         Ok(created_user.into())
     }

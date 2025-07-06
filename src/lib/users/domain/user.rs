@@ -10,3 +10,9 @@ pub struct User {
     pub created_at: Option<chrono::NaiveDateTime>,
     pub updated_at: Option<chrono::NaiveDateTime>,
 }
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct NewUser {
+    pub username: String,
+    pub password: String,
+}
