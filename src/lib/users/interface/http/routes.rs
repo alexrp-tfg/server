@@ -1,4 +1,4 @@
-use axum::{extract::State, http::StatusCode, response::IntoResponse, routing::post, Json};
+use axum::{extract::State, http::StatusCode, routing::post, Json};
 use utoipa::OpenApi;
 
 use crate::{
@@ -7,7 +7,7 @@ use crate::{
         http_server::AppState,
     },
     users::{
-        application::commands::create_user::{create_user_command_handler, CreateUserCommand}, domain::{User, UserRepository, UserRepositoryError}, infrastructure::CreateUserRow, interface::http::extractors::validated_json::ValidatedJson
+        application::commands::create_user::{create_user_command_handler, CreateUserCommand, CreateUserResult}, domain::{User, UserRepository, UserRepositoryError}, infrastructure::CreateUserRow, interface::http::extractors::validated_json::ValidatedJson
     },
 };
 
@@ -28,7 +28,7 @@ use crate::{
 pub async fn create_user<UR: UserRepository>(
     State(state): State<AppState<UR>>,
     ValidatedJson(body): ValidatedJson<CreateUserCommand>,
-) -> Result<(StatusCode, Json<ApiResponseBody<User>>), ApiError> {
+) -> Result<(StatusCode, Json<ApiResponseBody<CreateUserResult>>), ApiError> {
     match create_user_command_handler(body, state.user_repository.as_ref()).await {
         Ok(user) => Ok((
             StatusCode::CREATED,
@@ -36,7 +36,7 @@ pub async fn create_user<UR: UserRepository>(
         )),
         Err(err) => match err {
             UserRepositoryError::UserAlreadyExists => Err(ApiError::ConflictError(err.to_string())),
-            UserRepositoryError::DatabaseError => Err(ApiError::InternalServerError(err.to_string())),
+            UserRepositoryError::InternalServerError => Err(ApiError::InternalServerError(err.to_string())),
         },
     }
 }

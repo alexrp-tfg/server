@@ -34,7 +34,7 @@ impl UserRepository for DieselUserRepository {
         let mut conn = self
             .pool
             .get()
-            .map_err(|_| UserRepositoryError::DatabaseError)?;
+            .map_err(|_| UserRepositoryError::InternalServerError)?;
 
         let created_user = diesel::insert_into(users)
             .values(CreateUserRow::from(new_user))
@@ -44,9 +44,28 @@ impl UserRepository for DieselUserRepository {
                     diesel::result::DatabaseErrorKind::UniqueViolation,
                     _,
                 ) => UserRepositoryError::UserAlreadyExists,
-                _ => UserRepositoryError::DatabaseError,
+                _ => UserRepositoryError::InternalServerError,
             })?;
 
         Ok(created_user.into())
+    }
+
+    async fn get_by_username(
+        &self,
+        user_username: String,
+    ) -> Result<Option<User>, UserRepositoryError> {
+        use schema::users::dsl::*;
+        // Get a connection from the pool
+        let mut conn = self.pool
+            .get()
+            .map_err(|_| UserRepositoryError::InternalServerError)?;
+
+        let user_row = users
+            .filter(username.eq(user_username))
+            .first::<UserRow>(&mut *conn)
+            .optional()
+            .map_err(|_| UserRepositoryError::InternalServerError)?;
+
+        Ok(user_row.map(User::from))
     }
 }

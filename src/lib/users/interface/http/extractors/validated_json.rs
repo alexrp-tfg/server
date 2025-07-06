@@ -2,14 +2,14 @@ use axum::{
     Json,
     body::Body,
     extract::{FromRequest, Request, rejection::JsonRejection},
-    http::{Response, StatusCode},
+    http::Response,
     response::IntoResponse,
 };
 use serde::de::DeserializeOwned;
 use thiserror::Error;
 use validator::Validate;
 
-use crate::api::domain::{errors::ApiError, response_body::ApiResponseBody};
+use crate::api::domain::errors::ApiError;
 
 #[derive(Debug, Error)]
 pub enum ValidationError {
