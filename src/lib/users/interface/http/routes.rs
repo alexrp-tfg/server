@@ -5,10 +5,9 @@ use crate::{
     api::{
         domain::{errors::ApiError, response_body::ApiResponseBody},
         http_server::AppState,
-    },
-    users::{
-        application::commands::create_user::{create_user_command_handler, CreateUserCommand, CreateUserResult}, domain::{User, UserRepository, UserRepositoryError}, infrastructure::CreateUserRow, interface::http::extractors::validated_json::ValidatedJson
-    },
+    }, shared::interface::http::ValidatedJson, users::{
+        application::commands::create_user::{create_user_command_handler, CreateUserCommand, CreateUserResult}, domain::{User, UserRepository, UserRepositoryError}, infrastructure::CreateUserRow
+    }
 };
 
 #[utoipa::path(

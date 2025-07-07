@@ -1,2 +1,3 @@
 /target
 .env
+src/lib/persistence/domain/schema.rs
