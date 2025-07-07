@@ -12,3 +12,12 @@ Content-Type: application/json
 	"username": "admin",
 	"password": "12345678"
 }
+
+### Login to get a token
+POST {{url}}/login
+Content-Type: application/json
+
+{
+	"username": "admin",
+	"password": "12345678"
+}

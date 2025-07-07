@@ -1,8 +1,6 @@
-use serde::Serialize;
-use utoipa::ToSchema;
 use uuid::Uuid;
 
-#[derive(Debug, ToSchema, Serialize, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct User {
     pub id: Uuid,
     pub username: String,
@@ -15,4 +13,18 @@ pub struct User {
 pub struct NewUser {
     pub username: String,
     pub password: String,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct UserLogin {
+    pub username: String,
+    pub password: String,
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum UserLoginError {
+    #[error("Invalid username or password")]
+    InvalidCredentials,
+    #[error("Internal server error")]
+    InternalServerError(String),
 }
