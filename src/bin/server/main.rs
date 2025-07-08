@@ -12,9 +12,9 @@ async fn main() -> anyhow::Result<()> {
 
     // Establish a connection to the database and save as Arc so it can be shared among
     // multiple repositories
-    let connection = Arc::new(establish_connection());
+    let connection_pool = Arc::new(establish_connection());
 
-    let user_repository = DieselUserRepository::new(connection);
+    let user_repository = DieselUserRepository::new(connection_pool);
 
     let server = HttpServer::new(user_repository).await?;
 

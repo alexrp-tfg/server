@@ -32,7 +32,7 @@ validator = { version = "0.20.0", features = ["derive"] }
 thiserror = "2.0.12"
 argon2 = { version = "0.5.3", features = ["password-hash", "std"] }
 password-hash = "0.5.0"
-jwt = "0.16.0"
+jsonwebtoken = "9.3.1"
 
 [dev-dependencies]
 axum = { version = "0.8.4", features = ["macros"] }

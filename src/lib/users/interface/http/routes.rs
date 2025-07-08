@@ -6,7 +6,7 @@ use crate::{
         domain::{errors::{ApiError, ApiErrorBody}, response_body::{ApiResponseBody, TokenResponseBody}},
         http_server::AppState,
     }, shared::interface::http::ValidatedJson, users::{
-        application::{commands::create_user::{create_user_command_handler, CreateUserCommand, CreateUserResult}, login::{login_command_handler, LoginCommand, JWT}}, domain::{user::UserLoginError, UserRepository, UserRepositoryError}
+        application::{commands::create_user::{create_user_command_handler, CreateUserCommand, CreateUserResult}, login::{login_command_handler, LoginCommand}}, domain::{user::UserLoginError, UserRepository, UserRepositoryError}
     }
 };
 
@@ -59,7 +59,6 @@ pub async fn create_user<UR: UserRepository>(
         }))
     )
 )]
-// TODO: Change to return token instead of data in the body
 pub async fn login_user<UR: UserRepository>(
     State(state): State<AppState<UR>>,
     ValidatedJson(body): ValidatedJson<LoginCommand>,
@@ -79,7 +78,6 @@ pub async fn login_user<UR: UserRepository>(
 // Users api routes
 pub fn api_routes<UR: UserRepository>() -> axum::Router<AppState<UR>> {
     axum::Router::new().route("/", post(create_user::<UR>))
-        .route("/login", post(login_user::<UR>))
     
 }
 
