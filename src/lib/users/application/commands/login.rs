@@ -1,12 +1,11 @@
 use argon2::{Argon2, PasswordHash, PasswordVerifier};
-use jsonwebtoken::{EncodingKey, Header, encode};
+use jsonwebtoken::{encode, EncodingKey, Header};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use validator::Validate;
 
 use crate::users::domain::{
-        UserRepository,
-        user::{UserLogin, UserLoginError},
+        user::{UserLogin, UserLoginError}, Claims, LoginTokenService, Token, UserRepository
     };
 
 #[derive(Debug, ToSchema, Deserialize, Validate)]
@@ -26,18 +25,12 @@ impl From<LoginCommand> for UserLogin {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Claims {
-    sub: String,
-    username: String,
-    exp: u64,
-}
-
 #[derive(Serialize, ToSchema, PartialEq, Eq, Debug, Clone)]
 pub struct JWT(pub String);
 
 impl JWT {
     pub fn new(logged_user: Claims) -> Result<Self, UserLoginError> {
+        // TODO: Use a secure secret key from environment variables or a secure vault
         match encode(
             &Header::default(),
             &logged_user,
@@ -49,12 +42,17 @@ impl JWT {
             ))),
         }
     }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
 }
 
 pub async fn login_command_handler(
     command: LoginCommand,
     user_repository: &impl UserRepository,
-) -> Result<JWT, UserLoginError> {
+    login_token_service: &impl LoginTokenService,
+) -> Result<Token, UserLoginError> {
     let user = match user_repository.get_by_username(command.username).await {
         Ok(user) => user,
         Err(_) => None,
@@ -84,7 +82,7 @@ pub async fn login_command_handler(
     // Check if user exists and password is valid
     if let Some(user) = user {
         if password_valid {
-            JWT::new(Claims {
+            login_token_service.create_token(Claims {
                 sub: user.id.to_string(),
                 username: user.username,
                 exp: (chrono::Utc::now() + chrono::Duration::days(1)).timestamp() as u64,

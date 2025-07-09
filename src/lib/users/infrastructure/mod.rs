@@ -1,4 +1,5 @@
 pub mod diesel_user_repository;
+pub mod jwt_token_service;
 pub mod models;
 pub mod mappers;
 

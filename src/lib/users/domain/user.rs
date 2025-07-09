@@ -27,4 +27,6 @@ pub enum UserLoginError {
     InvalidCredentials,
     #[error("Internal server error")]
     InternalServerError(String),
+    #[error("Invalid token")]
+    InvalidToken,
 }

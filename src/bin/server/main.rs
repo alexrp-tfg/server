@@ -4,7 +4,7 @@ use diesel::{
     PgConnection,
     r2d2::{ConnectionManager, Pool},
 };
-use lib::{api::http_server::HttpServer, users::infrastructure::DieselUserRepository};
+use lib::{api::http_server::HttpServer, users::infrastructure::{jwt_token_service::JwtTokenService, DieselUserRepository}};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -14,9 +14,12 @@ async fn main() -> anyhow::Result<()> {
     // multiple repositories
     let connection_pool = Arc::new(establish_connection());
 
+    // Services
     let user_repository = DieselUserRepository::new(connection_pool);
+    let login_token_service = JwtTokenService{};
+    
 
-    let server = HttpServer::new(user_repository).await?;
+    let server = HttpServer::new(user_repository, login_token_service).await?;
 
     server.run().await
 }

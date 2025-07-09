@@ -8,12 +8,13 @@ use tower_http::{
 };
 use utoipa_swagger_ui::SwaggerUi;
 
-use crate::{api::routes::{api_routes, combine_openapi}, users::domain::UserRepository};
+use crate::{api::routes::{api_routes, combine_openapi}, users::domain::{LoginTokenService, UserRepository}};
 
 // State that every handlers share (used for services)
 #[derive(Debug, Clone)]
-pub struct AppState<UR: UserRepository> {
+pub struct AppState<UR: UserRepository, TS: LoginTokenService> {
     pub user_repository: Arc<UR>,
+    pub login_token_service: Arc<TS>,
 }
 
 pub struct HttpServer {
@@ -22,11 +23,12 @@ pub struct HttpServer {
 }
 
 impl HttpServer {
-    pub async fn new(user_repository: impl UserRepository) -> anyhow::Result<Self> {
+    pub async fn new(user_repository: impl UserRepository, login_token_service: impl LoginTokenService) -> anyhow::Result<Self> {
         dotenvy::dotenv().context("Failed to load .env file")?;
 
         let state = AppState {
             user_repository: Arc::new(user_repository),
+            login_token_service: Arc::new(login_token_service)
         };
 
         // Initialize tracing for the application
@@ -41,7 +43,7 @@ impl HttpServer {
         // Create the Axum router with the API routes and Swagger UI
         let router = axum::Router::new()
             .layer(cors)
-            .nest("/api", api_routes())
+            .nest("/api", api_routes(state.clone()))
             .with_state(state)
             .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", combine_openapi()))
             .layer(TraceLayer::new_for_http());
