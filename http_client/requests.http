@@ -7,17 +7,18 @@ GET {{url}}
 ### Create a new user
 POST {{url}}/users
 Content-Type: application/json
+Authorization: Bearer {{LOGIN.response.body.$.token}}
 
 {
-	"username": "admin",
+	"username": "pruebatestsss2",
 	"password": "12345678"
 }
 
-### Login to get a token
+### LOGIN
 POST {{url}}/login
 Content-Type: application/json
 
 {
-	"username": "admin",
+	"username": "pruebatest",
 	"password": "12345678"
 }
