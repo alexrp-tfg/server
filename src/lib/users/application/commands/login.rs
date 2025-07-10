@@ -46,7 +46,7 @@ pub async fn login_command_handler(
         None => {
             // User doesn't exist, perform dummy hash verification to maintain consistent timing
             // and prevent timing attacks
-            let dummy_hash = "$argon2id$v=19$m=65536,t=3,p=4$YWJjZGVmZ2hpamtsbW5vcA$kx9KzqFN7eOLCK3xfXx6XWjBhMEoEf0nDdGOJZQVPKo";
+            let dummy_hash = "$argon2id$v=19$m=19456,t=2,p=1$WNVqi0q634KvbTplSaeTjQ$9MDsb3afPzQmWX5pZVVb9/cWjFmdWAqPzQMMX2tomSs";
             let parsed_hash = PasswordHash::new(dummy_hash).map_err(|_| UserLoginError::InvalidCredentials)?;
             let _ = Argon2::default()
                 .verify_password(&command.password.as_bytes(), &parsed_hash);
