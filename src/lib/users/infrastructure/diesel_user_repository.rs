@@ -38,6 +38,7 @@ impl UserRepository for DieselUserRepository {
 
         let created_user = diesel::insert_into(users)
             .values(CreateUserRow::from(new_user))
+            .returning(UserRow::as_returning())
             .get_result::<UserRow>(&mut *conn)
             .map_err(|e| match e {
                 DieselError::DatabaseError(
@@ -62,6 +63,7 @@ impl UserRepository for DieselUserRepository {
 
         let user_row = users
             .filter(username.eq(user_username))
+            .select(UserRow::as_select())
             .first::<UserRow>(&mut *conn)
             .optional()
             .map_err(|_| UserRepositoryError::InternalServerError)?;

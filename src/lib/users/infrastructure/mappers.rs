@@ -6,6 +6,7 @@ impl From<UserRow> for User {
             id: row.id,
             username: row.username,
             password: row.password,
+            role: row.role.into(),
             created_at: row.created_at,
             updated_at: row.updated_at,
         }

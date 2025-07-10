@@ -1,4 +1,4 @@
-use axum::{Json, extract::State, http::StatusCode, middleware, routing::post};
+use axum::{Json, extract::State, http::StatusCode, routing::post};
 use utoipa::OpenApi;
 
 use crate::{
@@ -8,17 +8,15 @@ use crate::{
             response_body::{ApiResponseBody, TokenResponseBody},
         },
         http_server::AppState,
-    },
-    shared::interface::http::{ValidatedJson, mw_require_auth},
-    users::{
+    }, protected, require_roles, shared::interface::http::{mw_require_auth, mw_require_role, ValidatedJson}, users::{
         application::{
             commands::create_user::{
-                CreateUserCommand, CreateUserResult, create_user_command_handler,
+                create_user_command_handler, CreateUserCommand, CreateUserResult
             },
-            login::{LoginCommand, login_command_handler},
+            login::{login_command_handler, LoginCommand},
         },
-        domain::{LoginTokenService, UserRepository, UserRepositoryError, user::UserLoginError},
-    },
+        domain::{user::UserLoginError, LoginTokenService, Role, UserRepository, UserRepositoryError},
+    }
 };
 
 #[utoipa::path(
@@ -35,7 +33,6 @@ use crate::{
         })),
     )
 )]
-// TODO: Implement auth middleware for protected endpoints
 pub async fn create_user<UR: UserRepository, TS: LoginTokenService>(
     State(state): State<AppState<UR, TS>>,
     ValidatedJson(body): ValidatedJson<CreateUserCommand>,
@@ -96,10 +93,8 @@ pub fn api_routes<UR: UserRepository, TS: LoginTokenService>(
 ) -> axum::Router<AppState<UR, TS>> {
     axum::Router::new()
         .route("/", post(create_user::<UR, TS>))
-        .route_layer(middleware::from_fn_with_state(
-            state.clone(),
-            mw_require_auth::<UR, TS>,
-        ))
+        .route_layer(require_roles!(&[Role::Admin]))
+        .route_layer(protected!(state.clone()))
 }
 
 #[derive(OpenApi)]

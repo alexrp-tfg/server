@@ -20,6 +20,7 @@ pub enum ApiError {
     BadRequestError(String),
     UnauthorizedError(String),
     ConflictError(String),
+    ForbiddenError(String),
 }
 
 impl IntoResponse for ApiError {
@@ -51,6 +52,11 @@ impl IntoResponse for ApiError {
                 .into_response(),
             ConflictError(message) => (
                 axum::http::StatusCode::CONFLICT,
+                Json(ApiErrorBody::new(message)),
+            )
+                .into_response(),
+            ForbiddenError(message) => (
+                axum::http::StatusCode::FORBIDDEN,
                 Json(ApiErrorBody::new(message)),
             )
                 .into_response(),

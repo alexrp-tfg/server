@@ -8,7 +8,7 @@ use axum::{
 
 use crate::{
     api::{domain::errors::ApiError, http_server::AppState},
-    users::domain::{LoginTokenService, UserRepository},
+    users::domain::{Claims, LoginTokenService, Role, UserRepository},
 };
 
 pub async fn mw_require_auth<UR: UserRepository, TS: LoginTokenService>(
@@ -40,4 +40,42 @@ pub async fn mw_require_auth<UR: UserRepository, TS: LoginTokenService>(
     }
 
     Err(ApiError::UnauthorizedError("Unauthorized".to_string()).into_response())
+}
+
+pub async fn mw_require_role(
+    allowed_roles: &'static [Role],
+    req: Request<Body>,
+    next: Next,
+) -> Result<Response<Body>, Response<Body>> {
+    // Extract claims from request extensions (should be set by mw_require_auth)
+    println!("Extracting claims from request extensions");
+    let claims = req.extensions().get::<Claims>()
+        .ok_or_else(|| {
+            ApiError::UnauthorizedError("Missing authentication".to_string()).into_response()
+        })?;
+
+    // Check if user's role is in the allowed roles
+    if allowed_roles.contains(&claims.role) {
+        Ok(next.run(req).await)
+    } else {
+        Err(ApiError::ForbiddenError("Insufficient permissions".to_string()).into_response())
+    }
+}
+
+// Macro to create protected middleware
+#[macro_export]
+macro_rules! protected {
+    ($state:expr) => {
+        axum::middleware::from_fn_with_state($state, mw_require_auth)
+    };
+}
+
+// Macro to create role-based protected middleware
+#[macro_export]
+macro_rules! require_roles {
+    ($roles:expr) => {
+        axum::middleware::from_fn(move |req, next| {
+            mw_require_role($roles, req, next)
+        })
+    };
 }
