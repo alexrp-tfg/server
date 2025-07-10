@@ -1,4 +1,3 @@
-use axum::http::StatusCode;
 use serde::Serialize;
 use utoipa::ToSchema;
 
@@ -30,5 +29,3 @@ impl TokenResponseBody {
         }
     }
 }
-
-pub struct ApiResponse<T: Serialize + PartialEq + ToSchema + Send> (StatusCode, ApiResponseBody<T>);

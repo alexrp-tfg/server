@@ -1,6 +1,5 @@
 use argon2::{Argon2, PasswordHash, PasswordVerifier};
-use jsonwebtoken::{encode, EncodingKey, Header};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use utoipa::ToSchema;
 use validator::Validate;
 
@@ -22,29 +21,6 @@ impl From<LoginCommand> for UserLogin {
             username: command.username,
             password: command.password,
         }
-    }
-}
-
-#[derive(Serialize, ToSchema, PartialEq, Eq, Debug, Clone)]
-pub struct JWT(pub String);
-
-impl JWT {
-    pub fn new(logged_user: Claims) -> Result<Self, UserLoginError> {
-        // TODO: Use a secure secret key from environment variables or a secure vault
-        match encode(
-            &Header::default(),
-            &logged_user,
-            &EncodingKey::from_secret("secret".as_ref()),
-        ) {
-            Ok(token) => Ok(JWT(token)),
-            Err(_) => Err(UserLoginError::InternalServerError(format!(
-                "Failed to generate JWT token"
-            ))),
-        }
-    }
-
-    pub fn as_str(&self) -> &str {
-        &self.0
     }
 }
 
