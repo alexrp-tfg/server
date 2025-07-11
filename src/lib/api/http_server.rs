@@ -40,18 +40,18 @@ impl HttpServer {
             .allow_methods(Any)
             .allow_headers(Any);
 
+        let port = env::var("API_PORT")
+            .context("Failed to read API_PORT from environment")?
+            .parse::<u16>()
+            .context("Failed to parse API_PORT as u16")?;
+
         // Create the Axum router with the API routes and Swagger UI
         let router = axum::Router::new()
             .layer(cors)
             .nest("/api", api_routes(state.clone()))
             .with_state(state)
-            .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", combine_openapi()))
+            .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", combine_openapi(&port)))
             .layer(TraceLayer::new_for_http());
-
-        let port = env::var("API_PORT")
-            .context("Failed to read API_PORT from environment")?
-            .parse::<u16>()
-            .context("Failed to parse API_PORT as u16")?;
 
         let listener = net::TcpListener::bind(format!("0.0.0.0:{}", port))
             .await
