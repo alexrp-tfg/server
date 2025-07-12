@@ -14,6 +14,8 @@ pub trait UserRepository: Clone + Send + Sync + 'static {
 pub enum UserRepositoryError {
     #[error("User already exists")]
     UserAlreadyExists,
+    #[error("User not found")]
+    UserNotFound,
     #[error("Unexpected error")]
     InternalServerError,
 }

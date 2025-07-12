@@ -2,7 +2,7 @@ use uuid::Uuid;
 
 use crate::users::domain::Role;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct User {
     pub id: Uuid,
     pub username: String,

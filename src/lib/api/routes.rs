@@ -10,7 +10,7 @@ use crate::{
     },
 };
 
-mod health;
+pub mod health;
 
 pub fn api_routes<UR: UserRepository, TS: LoginTokenService>(
     state: AppState<UR, TS>,

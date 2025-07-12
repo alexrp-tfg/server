@@ -3,7 +3,7 @@ use utoipa::ToSchema;
 
 use crate::users::domain::{user::UserLoginError, Role};
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct Claims {
     pub sub: String,
     pub username: String,

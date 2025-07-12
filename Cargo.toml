@@ -36,4 +36,4 @@ jsonwebtoken = "9.3.1"
 
 [dev-dependencies]
 axum = { version = "0.8.4", features = ["macros"] }
-httpc-test = "0.1.10"
+tower = { version = "0.5.2", features = ["util"] }

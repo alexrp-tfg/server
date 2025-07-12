@@ -46,10 +46,9 @@ pub async fn create_user<UR: UserRepository, TS: LoginTokenService>(
     match create_user_command_handler(body, state.user_repository.as_ref()).await {
         Ok(user) => Ok((StatusCode::CREATED, ApiResponseBody::new(user).into())),
         Err(err) => match err {
-            UserRepositoryError::UserAlreadyExists => Err(ApiError::ConflictError(err.to_string())),
-            UserRepositoryError::InternalServerError => {
-                Err(ApiError::InternalServerError(err.to_string()))
-            }
+            UserRepositoryError::UserAlreadyExists=>Err(ApiError::ConflictError(err.to_string())),
+            UserRepositoryError::InternalServerError=>Err(ApiError::InternalServerError(err.to_string())),
+            UserRepositoryError::UserNotFound => Err(ApiError::InternalServerError("Internal server error".to_string())),
         },
     }
 }

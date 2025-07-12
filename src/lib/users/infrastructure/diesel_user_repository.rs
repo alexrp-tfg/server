@@ -66,7 +66,7 @@ impl UserRepository for DieselUserRepository {
             .select(UserRow::as_select())
             .first::<UserRow>(&mut *conn)
             .optional()
-            .map_err(|_| UserRepositoryError::InternalServerError)?;
+            .map_err(|_| UserRepositoryError::UserNotFound)?;
 
         Ok(user_row.map(User::from))
     }
