@@ -4,7 +4,15 @@
 GET {{url}}
  /healthz
 
-### Create a new user
+### get_all_users
+GET {{url}}/users
+Authorization: Bearer {{LOGIN.response.body.$.token}}
+
+### get_user_by_id
+GET {{url}}/users/{{get_all_users.response.body.$.data[0].id}}
+Authorization: Bearer {{LOGIN.response.body.$.token}}
+
+### create_user
 POST {{url}}/users
 Content-Type: application/json
 Authorization: Bearer {{LOGIN.response.body.$.token}}

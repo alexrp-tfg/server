@@ -8,6 +8,7 @@ pub struct MockUserRepository {
     pub fail_create: bool,
     pub fail_get: bool,
     pub user: Option<User>,
+    pub users_list: Vec<User>,
 }
 
 impl Default for MockUserRepository {
@@ -17,12 +18,13 @@ impl Default for MockUserRepository {
             fail_create: false,
             fail_get: false,
             user: None,
+            users_list: vec![],
         }
     }
 }
 
 impl UserRepository for MockUserRepository {
-    fn get_by_username<'a>(&'a self, username: String) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Option<User>, UserRepositoryError>> + Send + 'a>> {
+    fn get_by_username<'a>(&'a self, username: String) -> impl std::future::Future<Output = Result<Option<lib::users::domain::User>, UserRepositoryError>> + Send {
         let user_exists = self.user_exists;
         let fail_get = self.fail_get;
         let user = self.user.clone();
@@ -48,7 +50,36 @@ impl UserRepository for MockUserRepository {
             }
         })
     }
-    fn create_user<'a>(&'a self, user: NewUser) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<User, UserRepositoryError>> + Send + 'a>> {
+
+    fn get_by_id<'a>(&'a self, id: Uuid) -> impl std::future::Future<Output = Result<Option<lib::users::domain::User>, UserRepositoryError>> + Send {
+        let fail_get = self.fail_get;
+        let user = self.user.clone();
+        let users_list = self.users_list.clone();
+        Box::pin(async move {
+            if fail_get {
+                return Err(UserRepositoryError::InternalServerError);
+            }
+            if let Some(u) = user {
+                if u.id == id {
+                    return Ok(Some(u));
+                }
+            }
+            Ok(users_list.into_iter().find(|u| u.id == id))
+        })
+    }
+
+    fn get_all_users<'a>(&'a self) -> impl std::future::Future<Output = Result<Vec<lib::users::domain::User>, UserRepositoryError>> + Send {
+        let fail_get = self.fail_get;
+        let users_list = self.users_list.clone();
+        Box::pin(async move {
+            if fail_get {
+                return Err(UserRepositoryError::InternalServerError);
+            }
+            Ok(users_list)
+        })
+    }
+
+    fn create_user<'a>(&'a self, user: NewUser) -> impl std::future::Future<Output = Result<lib::users::domain::User, UserRepositoryError>> + Send {
         let fail_create = self.fail_create;
         Box::pin(async move {
             if fail_create {

@@ -1,4 +1,4 @@
-use axum::{Json, extract::State, http::StatusCode, routing::post};
+use axum::{Json, extract::{Path, State}, http::StatusCode, routing::{get, post}};
 use utoipa::OpenApi;
 
 use crate::{
@@ -15,6 +15,10 @@ use crate::{
         application::{
             commands::create_user::{
                 create_user_command_handler, CreateUserCommand, CreateUserResult
+            },
+            queries::{
+                get_all_users::{get_all_users_query_handler, GetAllUsersResult},
+                get_user::{get_user_query_handler, GetUserQuery, GetUserResult},
             },
             login::{login_command_handler, LoginCommand},
         },
@@ -92,6 +96,66 @@ pub async fn login_user<UR: UserRepository, TS: LoginTokenService>(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "",
+    description = "Get all users",
+    tag = "users",
+    responses(
+        (status = 200, description = "Users retrieved successfully", body = ApiResponseBody<Vec<GetAllUsersResult>>),
+        (status = 500, description = "Internal server error", body = ApiErrorBody,
+            example = json!({
+            "message": "Internal server error"
+        }))
+    ),
+    security(("bearer_auth" = [])),
+)]
+pub async fn get_all_users<UR: UserRepository, TS: LoginTokenService>(
+    State(state): State<AppState<UR, TS>>,
+) -> Result<(StatusCode, Json<ApiResponseBody<Vec<GetAllUsersResult>>>), ApiError> {
+    match get_all_users_query_handler(state.user_repository.as_ref()).await {
+        Ok(users) => Ok((StatusCode::OK, ApiResponseBody::new(users).into())),
+        Err(err) => match err {
+            _ => Err(ApiError::InternalServerError("Internal server error".to_string())),
+        },
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/{id}",
+    description = "Get user by ID",
+    tag = "users",
+    params(
+        ("id" = uuid::Uuid, Path, description = "User ID")
+    ),
+    responses(
+        (status = 200, description = "User retrieved successfully", body = ApiResponseBody<GetUserResult>),
+        (status = 404, description = "User not found", body = ApiErrorBody,
+            example = json!({
+            "message": "User not found"
+        })),
+        (status = 500, description = "Internal server error", body = ApiErrorBody,
+            example = json!({
+            "message": "Internal server error"
+        }))
+    ),
+    security(("bearer_auth" = [])),
+)]
+pub async fn get_user<UR: UserRepository, TS: LoginTokenService>(
+    State(state): State<AppState<UR, TS>>,
+    Path(id): Path<uuid::Uuid>,
+) -> Result<(StatusCode, Json<ApiResponseBody<GetUserResult>>), ApiError> {
+    let query = GetUserQuery { id };
+    match get_user_query_handler(query, state.user_repository.as_ref()).await {
+        Ok(Some(user)) => Ok((StatusCode::OK, ApiResponseBody::new(user).into())),
+        Ok(None) => Err(ApiError::NotFoundError("User not found".to_string())),
+        Err(err) => match err {
+            _ => Err(ApiError::InternalServerError("Internal server error".to_string())),
+        },
+    }
+}
+
 // Users api routes
 pub fn api_routes<UR: UserRepository, TS: LoginTokenService>(
     state: AppState<UR, TS>,
@@ -99,6 +163,8 @@ pub fn api_routes<UR: UserRepository, TS: LoginTokenService>(
     axum::Router::new()
         .route("/", post(create_user::<UR, TS>))
         .route_layer(require_roles!(&[Role::Admin]))
+        .route("/", get(get_all_users::<UR, TS>))
+        .route("/{:id}", get(get_user::<UR, TS>))
         .route_layer(protected!(state.clone()))
 }
 
