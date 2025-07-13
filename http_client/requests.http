@@ -18,8 +18,9 @@ Content-Type: application/json
 Authorization: Bearer {{LOGIN.response.body.$.token}}
 
 {
-	"username": "pruebatestsss2",
-	"password": "12345678"
+	"username": "admin3",
+	"password": "admin12345",
+	"role": "Admin"
 }
 
 ### LOGIN
@@ -27,6 +28,6 @@ POST {{url}}/login
 Content-Type: application/json
 
 {
-	"username": "pruebatest",
-	"password": "12345678"
+	"username": "admin",
+	"password": "admin"
 }

@@ -16,6 +16,7 @@ pub struct User {
 pub struct NewUser {
     pub username: String,
     pub password: String,
+    pub role: Option<Role>,
 }
 
 #[derive(Debug, PartialEq, Eq)]

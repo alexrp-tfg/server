@@ -23,6 +23,7 @@ pub struct UserRow {
 pub struct CreateUserRow {
     pub username: String,
     pub password: String,
+    pub role: Option<RowRole>,
 }
 
 impl From<NewUser> for CreateUserRow {
@@ -30,11 +31,12 @@ impl From<NewUser> for CreateUserRow {
         CreateUserRow {
             username: command.username,
             password: command.password,
+            role: command.role.map(RowRole::from),
         }
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Deserialize, ToSchema)]
 #[derive(diesel::FromSqlRow, diesel::AsExpression)]
 #[diesel(sql_type = sql_types::Role)]
 pub enum RowRole {
@@ -42,11 +44,20 @@ pub enum RowRole {
     User,
 }
 
+impl From<crate::users::domain::Role> for RowRole {
+    fn from(role: crate::users::domain::Role) -> Self {
+        match role {
+            crate::users::domain::Role::Admin => RowRole::Admin,
+            crate::users::domain::Role::User => RowRole::User,
+        }
+    }
+}
+
 impl diesel::serialize::ToSql<sql_types::Role, diesel::pg::Pg> for RowRole {
     fn to_sql<'b>(&'b self, out: &mut diesel::serialize::Output<'b, '_, diesel::pg::Pg>) -> diesel::serialize::Result {
         match *self {
-            RowRole::Admin => out.write_all(b"admin")?,
-            RowRole::User => out.write_all(b"user")?,
+            RowRole::Admin => out.write_all(b"ADMIN")?,
+            RowRole::User => out.write_all(b"USER")?,
         }
         Ok(diesel::serialize::IsNull::No)
     }

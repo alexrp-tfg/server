@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use validator::Validate;
 
-use crate::users::domain::{User, UserRepository, UserRepositoryError, user::NewUser};
+use crate::users::domain::{user::NewUser, Role, User, UserRepository, UserRepositoryError};
 
 #[derive(Debug, Validate, Deserialize, ToSchema)]
 pub struct CreateUserCommand {
@@ -12,6 +12,7 @@ pub struct CreateUserCommand {
     pub username: String,
     #[validate(length(min = 8, message = "Password must be at least 8 characters long"))]
     pub password: String,
+    pub role: Option<Role>,
 }
 
 #[derive(Debug, Serialize, ToSchema, Clone, PartialEq, Eq)]
@@ -50,6 +51,7 @@ impl From<CreateUserCommand> for NewUser {
         NewUser {
             username: command.username,
             password: command.password,
+            role: Some(command.role.unwrap_or(Role::User)),
         }
     }
 }

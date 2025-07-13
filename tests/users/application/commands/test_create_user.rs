@@ -15,6 +15,7 @@ async fn test_create_user_success() {
     let cmd = CreateUserCommand {
         username: "alice".to_string(),
         password: "password123".to_string(),
+        role: None,
     };
     let result = create_user_command_handler(cmd, &repo).await;
     assert!(result.is_ok());
@@ -33,6 +34,7 @@ async fn test_create_user_already_exists() {
     let cmd = CreateUserCommand {
         username: "bob".to_string(),
         password: "password123".to_string(),
+        role: None,
     };
     let result = create_user_command_handler(cmd, &repo).await;
     assert!(matches!(result, Err(UserRepositoryError::UserAlreadyExists)));
@@ -49,6 +51,7 @@ async fn test_create_user_repo_error_on_get() {
     let cmd = CreateUserCommand {
         username: "bob".to_string(),
         password: "password123".to_string(),
+        role: None,
     };
     let result = create_user_command_handler(cmd, &repo).await;
     assert!(matches!(result, Err(UserRepositoryError::InternalServerError)));
@@ -65,6 +68,7 @@ async fn test_create_user_repo_error_on_create() {
     let cmd = CreateUserCommand {
         username: "bob".to_string(),
         password: "password123".to_string(),
+        role: None,
     };
     let result = create_user_command_handler(cmd, &repo).await;
     assert!(matches!(result, Err(UserRepositoryError::InternalServerError)));

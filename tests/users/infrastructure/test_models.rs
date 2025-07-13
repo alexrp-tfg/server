@@ -19,10 +19,11 @@ fn test_userrow_to_user_mapping() {
 
 #[test]
 fn test_newuser_to_createuserrow_mapping() {
-    let new_user = NewUser { username: "bob".to_string(), password: "pw".to_string() };
+    let new_user = NewUser { username: "bob".to_string(), password: "pw".to_string(), role: Some(Role::User) };
     let row = CreateUserRow::from(new_user);
     assert_eq!(row.username, "bob");
     assert_eq!(row.password, "pw");
+    assert_eq!(row.role.unwrap(), RowRole::User);
 }
 
 #[test]

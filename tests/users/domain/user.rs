@@ -25,6 +25,7 @@ fn test_new_user_struct() {
     let new_user = NewUser {
         username: "bob".to_string(),
         password: "pw".to_string(),
+        role: Some(Role::User),
     };
     assert_eq!(new_user.username, "bob");
     assert_eq!(new_user.password, "pw");
