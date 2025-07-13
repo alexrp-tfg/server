@@ -50,7 +50,7 @@ impl HttpServer {
             .layer(cors)
             .nest("/api", api_routes(state.clone()))
             .with_state(state)
-            .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", combine_openapi(&port)))
+            .merge(SwaggerUi::new("/doc").url("/api-docs/openapi.json", combine_openapi(&port)))
             .layer(TraceLayer::new_for_http());
 
         let listener = net::TcpListener::bind(format!("0.0.0.0:{}", port))
