@@ -13,4 +13,27 @@ path = "src/bin/server/main.rs"
 
 
 [dependencies]
+anyhow = "1.0.98"
+axum = "0.8.4"
+serde = "1.0.219"
+serde_json = "1.0.140"
 tokio = { version = "1.45.1", features = ["full"] }
+tower-http = { version = "0.6.6", features = ["trace", "cors"] }
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.19", features = ["fmt", "env-filter"] }
+dotenvy = "0.15.7"
+utoipa-axum = "0.2.0"
+utoipa = { version = "5.4.0", features = ["axum_extras", "chrono", "uuid"] }
+utoipa-swagger-ui = { version = "9.0.2", features = ["axum"] }
+diesel = { version = "2.2.11", features = ["postgres", "chrono", "uuid", "r2d2"] }
+chrono = { version = "0.4.41", features = ["serde"] }
+uuid = { version = "1.17.0", features = ["serde", "v4"] }
+validator = { version = "0.20.0", features = ["derive"] }
+thiserror = "2.0.12"
+argon2 = { version = "0.5.3", features = ["password-hash", "std"] }
+password-hash = "0.5.0"
+jsonwebtoken = "9.3.1"
+
+[dev-dependencies]
+axum = { version = "0.8.4", features = ["macros"] }
+tower = { version = "0.5.2", features = ["util"] }

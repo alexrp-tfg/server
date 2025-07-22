@@ -1,0 +1,33 @@
+@url=http://localhost:8000/api
+
+### Health Check
+GET {{url}}
+ /healthz
+
+### get_all_users
+GET {{url}}/users
+Authorization: Bearer {{LOGIN.response.body.$.token}}
+
+### get_user_by_id
+GET {{url}}/users/{{get_all_users.response.body.$.data[0].id}}
+Authorization: Bearer {{LOGIN.response.body.$.token}}
+
+### create_user
+POST {{url}}/users
+Content-Type: application/json
+Authorization: Bearer {{LOGIN.response.body.$.token}}
+
+{
+	"username": "admin3",
+	"password": "admin12345",
+	"role": "Admin"
+}
+
+### LOGIN
+POST {{url}}/login
+Content-Type: application/json
+
+{
+	"username": "admin",
+	"password": "admin"
+}
