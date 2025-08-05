@@ -1,9 +1,10 @@
 use lib::users::{domain::{user::UserLoginError, Claims, LoginTokenService, Role}, infrastructure::jwt_token_service::{JwtTokenConfig, JwtTokenService}};
+use uuid::Uuid;
 
 
 fn test_claims() -> Claims {
     Claims {
-        sub: "user-id".to_string(),
+        sub: Uuid::new_v4(),
         username: "alice".to_string(),
         role: Role::User,
         exp: 9999999999,

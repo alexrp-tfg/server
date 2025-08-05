@@ -126,7 +126,7 @@ impl LoginTokenService for MockLoginTokenService {
             Err(UserLoginError::InternalServerError("validation fail".to_string()))
         } else {
             Ok(Claims {
-                sub: Uuid::new_v4().to_string(),
+                sub: Uuid::new_v4(),
                 role: Role::Admin,
                 username: "mockuser".to_string(),
                 exp: (chrono::Utc::now().timestamp() + 3600) as u64, // 1 hour expiration

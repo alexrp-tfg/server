@@ -1,11 +1,12 @@
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 use crate::users::domain::{user::UserLoginError, Role};
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct Claims {
-    pub sub: String,
+    pub sub: Uuid,
     pub username: String,
     pub role: Role,
     pub exp: u64,

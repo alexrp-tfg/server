@@ -1,11 +1,12 @@
 use lib::users::domain::{Claims, Role, Token};
 // Auth domain tests
 use serde_json;
+use uuid::Uuid;
 
 #[test]
 fn test_claims_struct_serde() {
     let claims = Claims {
-        sub: "user-id".to_string(),
+        sub: Uuid::new_v4(),
         username: "alice".to_string(),
         role: Role::Admin,
         exp: 123456,

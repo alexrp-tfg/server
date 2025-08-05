@@ -59,7 +59,7 @@ pub async fn login_command_handler(
     if let Some(user) = user {
         if password_valid {
             login_token_service.create_token(Claims {
-                sub: user.id.to_string(),
+                sub: user.id,
                 username: user.username,
                 role: user.role,
                 exp: (chrono::Utc::now() + chrono::Duration::days(1)).timestamp() as u64,
