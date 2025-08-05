@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use diesel::prelude::*;
 use std::sync::Arc;
 
@@ -26,6 +27,7 @@ impl DieselUserRepository {
     }
 }
 
+#[async_trait]
 impl UserRepository for DieselUserRepository {
     async fn create_user(&self, new_user: NewUser) -> Result<User, UserRepositoryError> {
         use schema::users::dsl::*;

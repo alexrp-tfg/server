@@ -8,13 +8,15 @@ use tower_http::{
 };
 use utoipa_swagger_ui::SwaggerUi;
 
-use crate::{api::routes::{api_routes, combine_openapi}, users::domain::{LoginTokenService, UserRepository}};
+use crate::{api::routes::{api_routes, combine_openapi}, users::domain::{LoginTokenService, UserRepository}, media::domain::{MediaRepository, FileStorageService}};
 
 // State that every handlers share (used for services)
-#[derive(Debug, Clone)]
-pub struct AppState<UR: UserRepository, TS: LoginTokenService> {
-    pub user_repository: Arc<UR>,
-    pub login_token_service: Arc<TS>,
+#[derive(Clone)]
+pub struct AppState {
+    pub user_repository: Arc<dyn UserRepository>,
+    pub login_token_service: Arc<dyn LoginTokenService>,
+    pub media_repository: Arc<dyn MediaRepository>,
+    pub storage_service: Arc<dyn FileStorageService>,
 }
 
 pub struct HttpServer {
@@ -23,12 +25,19 @@ pub struct HttpServer {
 }
 
 impl HttpServer {
-    pub async fn new(user_repository: impl UserRepository, login_token_service: impl LoginTokenService) -> anyhow::Result<Self> {
+    pub async fn new(
+        user_repository: impl UserRepository + 'static, 
+        login_token_service: impl LoginTokenService + 'static,
+        media_repository: impl MediaRepository + 'static,
+        storage_service: impl FileStorageService + 'static,
+    ) -> anyhow::Result<Self> {
         dotenvy::dotenv().context("Failed to load .env file")?;
 
         let state = AppState {
             user_repository: Arc::new(user_repository),
-            login_token_service: Arc::new(login_token_service)
+            login_token_service: Arc::new(login_token_service),
+            media_repository: Arc::new(media_repository),
+            storage_service: Arc::new(storage_service),
         };
 
         // Initialize tracing for the application

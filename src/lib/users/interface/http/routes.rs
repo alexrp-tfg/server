@@ -1,3 +1,4 @@
+use crate::shared::interface::http::mw_require_role;
 use axum::{Json, extract::{Path, State}, http::StatusCode, routing::{get, post}};
 use utoipa::OpenApi;
 
@@ -10,7 +11,7 @@ use crate::{
         http_server::AppState,
     },
     protected, require_roles,
-    shared::interface::{http::{mw_require_auth, mw_require_role, ValidatedJson}, openapi::security::SecurityAddon},
+    shared::interface::{http::ValidatedJson, openapi::security::SecurityAddon},
     users::{
         application::{
             commands::create_user::{
@@ -23,7 +24,7 @@ use crate::{
             login::{login_command_handler, LoginCommand},
         },
         domain::{
-            user::UserLoginError, LoginTokenService, Role, UserRepository, UserRepositoryError
+            user::UserLoginError, Role, UserRepositoryError
         },
     },
 };
@@ -43,8 +44,8 @@ use crate::{
     ),
     security(("bearer_auth" = [])),
 )]
-pub async fn create_user<UR: UserRepository, TS: LoginTokenService>(
-    State(state): State<AppState<UR, TS>>,
+pub async fn create_user(
+    State(state): State<AppState>,
     ValidatedJson(body): ValidatedJson<CreateUserCommand>,
 ) -> Result<(StatusCode, Json<ApiResponseBody<CreateUserResult>>), ApiError> {
     match create_user_command_handler(body, state.user_repository.as_ref()).await {
@@ -76,8 +77,8 @@ pub async fn create_user<UR: UserRepository, TS: LoginTokenService>(
         }))
     )
 )]
-pub async fn login_user<UR: UserRepository, TS: LoginTokenService>(
-    State(state): State<AppState<UR, TS>>,
+pub async fn login_user(
+    State(state): State<AppState>,
     ValidatedJson(body): ValidatedJson<LoginCommand>,
 ) -> Result<(StatusCode, Json<TokenResponseBody>), ApiError> {
     match login_command_handler(
@@ -110,8 +111,8 @@ pub async fn login_user<UR: UserRepository, TS: LoginTokenService>(
     ),
     security(("bearer_auth" = [])),
 )]
-pub async fn get_all_users<UR: UserRepository, TS: LoginTokenService>(
-    State(state): State<AppState<UR, TS>>,
+pub async fn get_all_users(
+    State(state): State<AppState>,
 ) -> Result<(StatusCode, Json<ApiResponseBody<Vec<GetAllUsersResult>>>), ApiError> {
     match get_all_users_query_handler(state.user_repository.as_ref()).await {
         Ok(users) => Ok((StatusCode::OK, ApiResponseBody::new(users).into())),
@@ -142,8 +143,8 @@ pub async fn get_all_users<UR: UserRepository, TS: LoginTokenService>(
     ),
     security(("bearer_auth" = [])),
 )]
-pub async fn get_user<UR: UserRepository, TS: LoginTokenService>(
-    State(state): State<AppState<UR, TS>>,
+pub async fn get_user(
+    State(state): State<AppState>,
     Path(id): Path<uuid::Uuid>,
 ) -> Result<(StatusCode, Json<ApiResponseBody<GetUserResult>>), ApiError> {
     let query = GetUserQuery { id };
@@ -157,14 +158,14 @@ pub async fn get_user<UR: UserRepository, TS: LoginTokenService>(
 }
 
 // Users api routes
-pub fn api_routes<UR: UserRepository, TS: LoginTokenService>(
-    state: AppState<UR, TS>,
-) -> axum::Router<AppState<UR, TS>> {
+pub fn api_routes(
+    state: AppState,
+) -> axum::Router<AppState> {
     axum::Router::new()
-        .route("/", post(create_user::<UR, TS>))
+        .route("/", post(create_user))
         .route_layer(require_roles!(&[Role::Admin]))
-        .route("/", get(get_all_users::<UR, TS>))
-        .route("/{:id}", get(get_user::<UR, TS>))
+        .route("/", get(get_all_users))
+        .route("/{:id}", get(get_user))
         .route_layer(protected!(state.clone()))
 }
 

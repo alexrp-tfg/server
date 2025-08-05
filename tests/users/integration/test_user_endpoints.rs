@@ -16,8 +16,8 @@ use tower::util::ServiceExt;
 use uuid::Uuid;
 
 fn test_app(
-    state: AppState<MockUserRepository, MockLoginTokenService>,
-) -> Router<AppState<MockUserRepository, MockLoginTokenService>> {
+    state: AppState,
+) -> Router<AppState> {
     api_routes(state)
 }
 

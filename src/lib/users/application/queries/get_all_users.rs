@@ -12,8 +12,8 @@ pub struct GetAllUsersResult {
     pub updated_at: Option<chrono::NaiveDateTime>,
 }
 
-pub async fn get_all_users_query_handler<UR: UserRepository>(
-    user_repository: &UR,
+pub async fn get_all_users_query_handler(
+    user_repository: &dyn UserRepository,
 ) -> Result<Vec<GetAllUsersResult>, UserRepositoryError> {
     let users = user_repository.get_all_users().await?;
     Ok(users.into_iter().map(|user| user.into()).collect())

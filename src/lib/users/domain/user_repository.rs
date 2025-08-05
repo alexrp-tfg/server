@@ -1,21 +1,22 @@
-use std::future::Future;
+use async_trait::async_trait;
 
 use crate::users::domain::{User, user::NewUser};
 
-pub trait UserRepository: Clone + Send + Sync + 'static {
-    fn get_by_username(
+#[async_trait]
+pub trait UserRepository: Send + Sync {
+    async fn get_by_username(
         &self,
         username: String,
-    ) -> impl Future<Output = Result<Option<User>, UserRepositoryError>> + Send;
-    fn get_by_id(
+    ) -> Result<Option<User>, UserRepositoryError>;
+    async fn get_by_id(
         &self,
         id: uuid::Uuid,
-    ) -> impl Future<Output = Result<Option<User>, UserRepositoryError>> + Send;
-    fn get_all_users(&self) -> impl Future<Output = Result<Vec<User>, UserRepositoryError>> + Send;
-    fn create_user(
+    ) -> Result<Option<User>, UserRepositoryError>;
+    async fn get_all_users(&self) -> Result<Vec<User>, UserRepositoryError>;
+    async fn create_user(
         &self,
         user: NewUser,
-    ) -> impl Future<Output = Result<User, UserRepositoryError>> + Send;
+    ) -> Result<User, UserRepositoryError>;
 }
 
 #[derive(Debug, thiserror::Error)]

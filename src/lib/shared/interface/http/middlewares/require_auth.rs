@@ -8,11 +8,11 @@ use axum::{
 
 use crate::{
     api::{domain::errors::ApiError, http_server::AppState},
-    users::domain::{Claims, LoginTokenService, Role, UserRepository},
+    users::domain::{Claims, Role},
 };
 
-pub async fn mw_require_auth<UR: UserRepository, TS: LoginTokenService>(
-    State(state): State<AppState<UR, TS>>,
+pub async fn mw_require_auth(
+    State(state): State<AppState>,
     mut req: Request<Body>,
     next: Next,
 ) -> Result<Response<Body>, Response<Body>> {
@@ -66,7 +66,7 @@ pub async fn mw_require_role(
 #[macro_export]
 macro_rules! protected {
     ($state:expr) => {
-        axum::middleware::from_fn_with_state($state, mw_require_auth)
+        axum::middleware::from_fn_with_state($state, crate::shared::interface::http::middlewares::require_auth::mw_require_auth)
     };
 }
 

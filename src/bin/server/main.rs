@@ -13,6 +13,7 @@ use lib::{
             jwt_token_service::{JwtTokenConfig, JwtTokenService},
         },
     },
+    media::infrastructure::{DieselMediaRepository, MinioStorageService},
 };
 
 #[tokio::main]
@@ -40,10 +41,14 @@ async fn main() -> anyhow::Result<()> {
     let connection_pool = Arc::new(establish_connection());
 
     // Services
-    let user_repository = DieselUserRepository::new(connection_pool);
+    let user_repository = DieselUserRepository::new(connection_pool.clone());
     let login_token_service = JwtTokenService::new(JwtTokenConfig::new());
+    
+    // Media services
+    let media_repository = DieselMediaRepository::new((*connection_pool).clone());
+    let storage_service = create_storage_service()?;
 
-    let server = HttpServer::new(user_repository, login_token_service).await?;
+    let server = HttpServer::new(user_repository, login_token_service, media_repository, storage_service).await?;
 
     server.run().await
 }
@@ -96,4 +101,18 @@ fn establish_connection() -> Pool<ConnectionManager<PgConnection>> {
         "Error creating connection pool for {}",
         &database_url
     ))
+}
+
+fn create_storage_service() -> anyhow::Result<MinioStorageService> {
+    let minio_endpoint = std::env::var("MINIO_ENDPOINT")
+        .unwrap_or_else(|_| "http://localhost:9000".to_string());
+    let minio_access_key = std::env::var("MINIO_ACCESS_KEY")
+        .unwrap_or_else(|_| "minioadmin".to_string());
+    let minio_secret_key = std::env::var("MINIO_SECRET_KEY")
+        .unwrap_or_else(|_| "minioadmin".to_string());
+    let minio_bucket = std::env::var("MINIO_BUCKET")
+        .unwrap_or_else(|_| "media-files".to_string());
+
+    MinioStorageService::new(minio_endpoint, minio_access_key, minio_secret_key, minio_bucket)
+        .map_err(|e| anyhow::anyhow!("Failed to create storage service: {}", e))
 }

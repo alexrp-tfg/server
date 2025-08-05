@@ -23,9 +23,9 @@ pub struct CreateUserResult {
     pub updated_at: Option<chrono::NaiveDateTime>,
 }
 
-pub async fn create_user_command_handler<UR: UserRepository>(
+pub async fn create_user_command_handler(
     mut command: CreateUserCommand,
-    user_repository: &UR,
+    user_repository: &dyn UserRepository,
 ) -> Result<CreateUserResult, UserRepositoryError> {
 
     // Check if the user already exists

@@ -34,3 +34,11 @@ mod users {
     pub mod mocks;
     pub use mocks::*;
 }
+
+mod media {
+    pub mod application {
+        pub mod commands {
+            mod test_upload_media;
+        }
+    }
+}

@@ -17,9 +17,9 @@ pub struct GetUserResult {
     pub updated_at: Option<chrono::NaiveDateTime>,
 }
 
-pub async fn get_user_query_handler<UR: UserRepository>(
+pub async fn get_user_query_handler(
     query: GetUserQuery,
-    user_repository: &UR,
+    user_repository: &dyn UserRepository,
 ) -> Result<Option<GetUserResult>, UserRepositoryError> {
     let user = user_repository.get_by_id(query.id).await?;
     Ok(user.map(|u| u.into()))

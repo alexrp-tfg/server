@@ -26,8 +26,8 @@ impl From<LoginCommand> for UserLogin {
 
 pub async fn login_command_handler(
     command: LoginCommand,
-    user_repository: &impl UserRepository,
-    login_token_service: &impl LoginTokenService,
+    user_repository: &dyn UserRepository,
+    login_token_service: &dyn LoginTokenService,
 ) -> Result<Token, UserLoginError> {
     let user = match user_repository.get_by_username(command.username).await {
         Ok(user) => user,
