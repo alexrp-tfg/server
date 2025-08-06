@@ -44,19 +44,20 @@ pub async fn upload_media_command_handler<MR: MediaRepository + ?Sized, FS: File
 
     // Generate unique file path
     let file_path = format!("media/{}/{}", command.user_id, command.filename);
+    let file_size = command.file_data.len() as i64;
 
     // Store file in MinIO
     storage_service
-        .store_file(&command.file_data, &file_path, &command.content_type)
+        .store_file(command.file_data, &file_path, &command.content_type)
         .await
-        .map_err(|e| MediaUploadError::StorageError(e))?;
+        .map_err(MediaUploadError::StorageError)?;
 
     // Create media file record in database
     let new_media_file = NewMediaFile {
         user_id: command.user_id,
         filename: command.filename,
         original_filename: command.original_filename,
-        file_size: command.file_data.len() as i64,
+        file_size,
         content_type: command.content_type,
         file_path,
     };

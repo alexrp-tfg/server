@@ -29,10 +29,7 @@ pub async fn login_command_handler(
     user_repository: &dyn UserRepository,
     login_token_service: &dyn LoginTokenService,
 ) -> Result<Token, UserLoginError> {
-    let user = match user_repository.get_by_username(command.username).await {
-        Ok(user) => user,
-        Err(_) => None,
-    };
+    let user = (user_repository.get_by_username(command.username).await).unwrap_or_default();
 
     // Always perform password hashing to prevent timing attacks
     let password_valid = match &user {
@@ -40,7 +37,7 @@ pub async fn login_command_handler(
             // User exists, verify against stored hash
             let parsed_hash = PasswordHash::new(&user.password).map_err(|_| UserLoginError::InvalidCredentials)?;
             Argon2::default()
-                .verify_password(&command.password.as_bytes(), &parsed_hash)
+                .verify_password(command.password.as_bytes(), &parsed_hash)
                 .is_ok()
         }
         None => {
@@ -49,7 +46,7 @@ pub async fn login_command_handler(
             let dummy_hash = "$argon2id$v=19$m=19456,t=2,p=1$WNVqi0q634KvbTplSaeTjQ$9MDsb3afPzQmWX5pZVVb9/cWjFmdWAqPzQMMX2tomSs";
             let parsed_hash = PasswordHash::new(dummy_hash).map_err(|_| UserLoginError::InvalidCredentials)?;
             let _ = Argon2::default()
-                .verify_password(&command.password.as_bytes(), &parsed_hash);
+                .verify_password(command.password.as_bytes(), &parsed_hash);
             // Always return false for non-existent users, regardless of dummy hash result
             false
         }

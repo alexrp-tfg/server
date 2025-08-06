@@ -1,7 +1,7 @@
 use lib::users::domain::{Role, User, UserRepository, UserRepositoryError};
 use crate::users::MockUserRepository;
 use uuid::Uuid;
-use chrono::NaiveDateTime;
+use chrono::{NaiveDateTime, DateTime};
 
 // These tests verify the repository interface behavior using the mock implementation
 // Since the DieselUserRepository requires database setup, we test the interface contract
@@ -14,16 +14,16 @@ async fn test_repository_get_all_users_interface() {
             username: "alice".to_string(),
             password: "hashed1".to_string(),
             role: Role::User,
-            created_at: Some(NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
-            updated_at: Some(NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
+            created_at: Some(DateTime::from_timestamp(0, 0).unwrap().naive_utc()),
+            updated_at: Some(DateTime::from_timestamp(0, 0).unwrap().naive_utc()),
         },
         User {
             id: Uuid::new_v4(),
             username: "bob".to_string(),
             password: "hashed2".to_string(),
             role: Role::Admin,
-            created_at: Some(NaiveDateTime::from_timestamp_opt(1, 0).unwrap()),
-            updated_at: Some(NaiveDateTime::from_timestamp_opt(1, 0).unwrap()),
+            created_at: Some(DateTime::from_timestamp(1, 0).unwrap().naive_utc()),
+            updated_at: Some(DateTime::from_timestamp(1, 0).unwrap().naive_utc()),
         },
     ];
     
@@ -69,8 +69,8 @@ async fn test_repository_get_by_id_interface() {
         username: "alice".to_string(),
         password: "hashed".to_string(),
         role: Role::User,
-        created_at: Some(NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
-        updated_at: Some(NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
+        created_at: Some(DateTime::from_timestamp(0, 0).unwrap().naive_utc()),
+        updated_at: Some(DateTime::from_timestamp(0, 0).unwrap().naive_utc()),
     };
     
     let repo = MockUserRepository {
@@ -120,16 +120,16 @@ async fn test_repository_get_by_id_from_list() {
             username: "alice".to_string(),
             password: "hashed1".to_string(),
             role: Role::User,
-            created_at: Some(NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
-            updated_at: Some(NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
+            created_at: Some(DateTime::from_timestamp(0, 0).unwrap().naive_utc()),
+            updated_at: Some(DateTime::from_timestamp(0, 0).unwrap().naive_utc()),
         },
         User {
             id: user_id_2,
             username: "bob".to_string(),
             password: "hashed2".to_string(),
             role: Role::Admin,
-            created_at: Some(NaiveDateTime::from_timestamp_opt(1, 0).unwrap()),
-            updated_at: Some(NaiveDateTime::from_timestamp_opt(1, 0).unwrap()),
+            created_at: Some(DateTime::from_timestamp(1, 0).unwrap().naive_utc()),
+            updated_at: Some(DateTime::from_timestamp(1, 0).unwrap().naive_utc()),
         },
     ];
     

@@ -8,7 +8,11 @@ use tower_http::{
 };
 use utoipa_swagger_ui::SwaggerUi;
 
-use crate::{api::routes::{api_routes, combine_openapi}, users::domain::{LoginTokenService, UserRepository}, media::domain::{MediaRepository, FileStorageService}};
+use crate::{
+    api::routes::{api_routes, combine_openapi},
+    media::domain::{FileStorageService, MediaRepository},
+    users::domain::{LoginTokenService, UserRepository},
+};
 
 // State that every handlers share (used for services)
 #[derive(Clone)]
@@ -26,7 +30,7 @@ pub struct HttpServer {
 
 impl HttpServer {
     pub async fn new(
-        user_repository: impl UserRepository + 'static, 
+        user_repository: impl UserRepository + 'static,
         login_token_service: impl LoginTokenService + 'static,
         media_repository: impl MediaRepository + 'static,
         storage_service: impl FileStorageService + 'static,

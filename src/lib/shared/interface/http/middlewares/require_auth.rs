@@ -66,7 +66,7 @@ pub async fn mw_require_role(
 #[macro_export]
 macro_rules! protected {
     ($state:expr) => {
-        axum::middleware::from_fn_with_state($state, crate::shared::interface::http::middlewares::require_auth::mw_require_auth)
+        axum::middleware::from_fn_with_state($state, $crate::shared::interface::http::middlewares::require_auth::mw_require_auth)
     };
 }
 

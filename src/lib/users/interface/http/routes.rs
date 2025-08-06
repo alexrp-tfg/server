@@ -116,9 +116,7 @@ pub async fn get_all_users(
 ) -> Result<(StatusCode, Json<ApiResponseBody<Vec<GetAllUsersResult>>>), ApiError> {
     match get_all_users_query_handler(state.user_repository.as_ref()).await {
         Ok(users) => Ok((StatusCode::OK, ApiResponseBody::new(users).into())),
-        Err(err) => match err {
-            _ => Err(ApiError::InternalServerError("Internal server error".to_string())),
-        },
+        Err(_) => Err(ApiError::InternalServerError("Internal server error".to_string())),
     }
 }
 
@@ -151,9 +149,7 @@ pub async fn get_user(
     match get_user_query_handler(query, state.user_repository.as_ref()).await {
         Ok(Some(user)) => Ok((StatusCode::OK, ApiResponseBody::new(user).into())),
         Ok(None) => Err(ApiError::NotFoundError("User not found".to_string())),
-        Err(err) => match err {
-            _ => Err(ApiError::InternalServerError("Internal server error".to_string())),
-        },
+        Err(_) => Err(ApiError::InternalServerError("Internal server error".to_string())),
     }
 }
 

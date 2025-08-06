@@ -3,7 +3,7 @@ use lib::users::application::queries::get_all_users::GetAllUsersResult;
 use lib::users::application::queries::get_user::GetUserResult;
 // User domain tests
 use uuid::Uuid;
-use chrono::NaiveDateTime;
+use chrono::DateTime;
 
 #[test]
 fn test_user_struct_equality() {
@@ -13,7 +13,7 @@ fn test_user_struct_equality() {
         username: "alice".to_string(),
         password: "hashed_pw".to_string(),
         role: Role::User,
-        created_at: Some(NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
+        created_at: Some(DateTime::from_timestamp(0, 0).unwrap().naive_utc()),
         updated_at: None,
     };
     let user2 = user1.clone();
@@ -59,8 +59,8 @@ fn test_user_to_get_all_users_result_conversion() {
         username: "alice".to_string(),
         password: "secret_password".to_string(),
         role: Role::Admin,
-        created_at: Some(NaiveDateTime::from_timestamp_opt(123456789, 0).unwrap()),
-        updated_at: Some(NaiveDateTime::from_timestamp_opt(987654321, 0).unwrap()),
+        created_at: Some(DateTime::from_timestamp(123456789, 0).unwrap().naive_utc()),
+        updated_at: Some(DateTime::from_timestamp(987654321, 0).unwrap().naive_utc()),
     };
     
     let result: GetAllUsersResult = user.clone().into();
@@ -83,8 +83,8 @@ fn test_user_to_get_user_result_conversion() {
         username: "bob".to_string(),
         password: "another_secret".to_string(),
         role: Role::User,
-        created_at: Some(NaiveDateTime::from_timestamp_opt(111111111, 0).unwrap()),
-        updated_at: Some(NaiveDateTime::from_timestamp_opt(222222222, 0).unwrap()),
+        created_at: Some(DateTime::from_timestamp(111111111, 0).unwrap().naive_utc()),
+        updated_at: Some(DateTime::from_timestamp(222222222, 0).unwrap().naive_utc()),
     };
     
     let result: GetUserResult = user.clone().into();

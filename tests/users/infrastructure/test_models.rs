@@ -1,6 +1,6 @@
 use lib::users::{domain::{user::NewUser, Role, User}, infrastructure::{models::RowRole, CreateUserRow, UserRow}};
 use uuid::Uuid;
-use chrono::NaiveDateTime;
+use chrono::DateTime;
 
 #[test]
 fn test_userrow_to_user_mapping() {
@@ -9,8 +9,8 @@ fn test_userrow_to_user_mapping() {
         username: "alice".to_string(),
         password: "pw".to_string(),
         role: RowRole::Admin,
-        created_at: Some(NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
-        updated_at: Some(NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
+        created_at: Some(DateTime::from_timestamp(0, 0).unwrap().naive_utc()),
+        updated_at: Some(DateTime::from_timestamp(0, 0).unwrap().naive_utc()),
     };
     let user = User::from(row);
     assert_eq!(user.username, "alice");

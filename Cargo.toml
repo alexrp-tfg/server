@@ -34,7 +34,7 @@ argon2 = { version = "0.5.3", features = ["password-hash", "std"] }
 password-hash = "0.5.0"
 jsonwebtoken = "9.3.1"
 async-trait = "0.1.84"
-rust-s3 = "0.35.1"
+minio = "0.3.0"
 
 [dev-dependencies]
 axum = { version = "0.8.4", features = ["macros"] }

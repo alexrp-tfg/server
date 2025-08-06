@@ -1,4 +1,4 @@
-use chrono::NaiveDateTime;
+use chrono::DateTime;
 use lib::users::{
     application::login::{LoginCommand, login_command_handler},
     domain::{
@@ -20,7 +20,7 @@ async fn test_login_success() {
         username: "alice".to_string(),
         password: hashed,
         role: Role::User,
-        created_at: Some(NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
+        created_at: Some(DateTime::from_timestamp(0, 0).unwrap().naive_utc()),
         updated_at: None,
     };
     let repo = MockUserRepository {
@@ -65,7 +65,7 @@ async fn test_login_wrong_password() {
         username: "alice".to_string(),
         password: hashed,
         role: Role::User,
-        created_at: Some(NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
+        created_at: Some(DateTime::from_timestamp(0, 0).unwrap().naive_utc()),
         updated_at: None,
     };
     let repo = MockUserRepository {
@@ -89,7 +89,7 @@ async fn test_login_invalid_hash() {
         username: "alice".to_string(),
         password: "not_a_valid_hash".to_string(),
         role: Role::User,
-        created_at: Some(NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
+        created_at: Some(DateTime::from_timestamp(0, 0).unwrap().naive_utc()),
         updated_at: None,
     };
     let repo = MockUserRepository {
@@ -114,7 +114,7 @@ async fn test_login_token_creation_failure() {
         username: "alice".to_string(),
         password: hashed,
         role: Role::User,
-        created_at: Some(NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
+        created_at: Some(DateTime::from_timestamp(0, 0).unwrap().naive_utc()),
         updated_at: None,
     };
     let repo = MockUserRepository {

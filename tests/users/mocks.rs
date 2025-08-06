@@ -1,8 +1,9 @@
 use lib::users::{domain::{user::{User, NewUser, UserLoginError}, Role, UserRepository, UserRepositoryError, Claims, LoginTokenService, Token}};
 use uuid::Uuid;
-use chrono::NaiveDateTime;
+use chrono::DateTime;
+use async_trait::async_trait;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct MockUserRepository {
     pub user_exists: bool,
     pub fail_create: bool,
@@ -11,106 +12,72 @@ pub struct MockUserRepository {
     pub users_list: Vec<User>,
 }
 
-impl Default for MockUserRepository {
-    fn default() -> Self {
-        Self {
-            user_exists: false,
-            fail_create: false,
-            fail_get: false,
-            user: None,
-            users_list: vec![],
+#[async_trait]
+impl UserRepository for MockUserRepository {
+    async fn get_by_username(&self, username: String) -> Result<Option<lib::users::domain::User>, UserRepositoryError> {
+        if self.fail_get {
+            return Err(UserRepositoryError::InternalServerError);
+        }
+        if self.user_exists {
+            if let Some(u) = &self.user {
+                Ok(Some(u.clone()))
+            } else {
+                Ok(Some(User {
+                    id: Uuid::new_v4(),
+                    username,
+                    password: "hashed".to_string(),
+                    role: Role::User,
+                    created_at: Some(DateTime::from_timestamp(0, 0).unwrap().naive_utc()),
+                    updated_at: Some(DateTime::from_timestamp(0, 0).unwrap().naive_utc()),
+                }))
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
+    async fn get_by_id(&self, id: Uuid) -> Result<Option<lib::users::domain::User>, UserRepositoryError> {
+        if self.fail_get {
+            return Err(UserRepositoryError::InternalServerError);
+        }
+        if let Some(u) = &self.user {
+            if u.id == id {
+                return Ok(Some(u.clone()));
+            }
+        }
+        Ok(self.users_list.iter().find(|u| u.id == id).cloned())
+    }
+
+    async fn get_all_users(&self) -> Result<Vec<lib::users::domain::User>, UserRepositoryError> {
+        if self.fail_get {
+            return Err(UserRepositoryError::InternalServerError);
+        }
+        Ok(self.users_list.clone())
+    }
+
+    async fn create_user(&self, user: NewUser) -> Result<lib::users::domain::User, UserRepositoryError> {
+        if self.fail_create {
+            return Err(UserRepositoryError::InternalServerError);
+        }
+        if user.username == "exists" {
+            Err(UserRepositoryError::UserAlreadyExists)
+        } else {
+            Ok(User {
+                id: Uuid::new_v4(),
+                username: user.username,
+                password: user.password,
+                role: Role::User,
+                created_at: Some(DateTime::from_timestamp(0, 0).unwrap().naive_utc()),
+                updated_at: Some(DateTime::from_timestamp(0, 0).unwrap().naive_utc()),
+            })
         }
     }
 }
 
-impl UserRepository for MockUserRepository {
-    fn get_by_username<'a>(&'a self, username: String) -> impl std::future::Future<Output = Result<Option<lib::users::domain::User>, UserRepositoryError>> + Send {
-        let user_exists = self.user_exists;
-        let fail_get = self.fail_get;
-        let user = self.user.clone();
-        Box::pin(async move {
-            if fail_get {
-                return Err(UserRepositoryError::InternalServerError);
-            }
-            if user_exists {
-                if let Some(u) = user {
-                    Ok(Some(u))
-                } else {
-                    Ok(Some(User {
-                        id: Uuid::new_v4(),
-                        username,
-                        password: "hashed".to_string(),
-                        role: Role::User,
-                        created_at: Some(NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
-                        updated_at: Some(NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
-                    }))
-                }
-            } else {
-                Ok(None)
-            }
-        })
-    }
-
-    fn get_by_id<'a>(&'a self, id: Uuid) -> impl std::future::Future<Output = Result<Option<lib::users::domain::User>, UserRepositoryError>> + Send {
-        let fail_get = self.fail_get;
-        let user = self.user.clone();
-        let users_list = self.users_list.clone();
-        Box::pin(async move {
-            if fail_get {
-                return Err(UserRepositoryError::InternalServerError);
-            }
-            if let Some(u) = user {
-                if u.id == id {
-                    return Ok(Some(u));
-                }
-            }
-            Ok(users_list.into_iter().find(|u| u.id == id))
-        })
-    }
-
-    fn get_all_users<'a>(&'a self) -> impl std::future::Future<Output = Result<Vec<lib::users::domain::User>, UserRepositoryError>> + Send {
-        let fail_get = self.fail_get;
-        let users_list = self.users_list.clone();
-        Box::pin(async move {
-            if fail_get {
-                return Err(UserRepositoryError::InternalServerError);
-            }
-            Ok(users_list)
-        })
-    }
-
-    fn create_user<'a>(&'a self, user: NewUser) -> impl std::future::Future<Output = Result<lib::users::domain::User, UserRepositoryError>> + Send {
-        let fail_create = self.fail_create;
-        Box::pin(async move {
-            if fail_create {
-                return Err(UserRepositoryError::InternalServerError);
-            }
-            if user.username == "exists" {
-                Err(UserRepositoryError::UserAlreadyExists)
-            } else {
-                Ok(User {
-                    id: Uuid::new_v4(),
-                    username: user.username,
-                    password: user.password,
-                    role: Role::User,
-                    created_at: Some(NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
-                    updated_at: Some(NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
-                })
-            }
-        })
-    }
-}
-
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct MockLoginTokenService {
     pub fail: bool,
     pub validation_fail: bool
-}
-
-impl Default for MockLoginTokenService {
-    fn default() -> Self {
-        Self { fail: false, validation_fail: false }
-    }
 }
 
 impl LoginTokenService for MockLoginTokenService {
@@ -133,4 +100,4 @@ impl LoginTokenService for MockLoginTokenService {
             })
         }
     }
-} 
+}

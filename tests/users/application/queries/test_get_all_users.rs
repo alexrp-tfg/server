@@ -4,7 +4,7 @@ use lib::users::{
 };
 use crate::users::MockUserRepository;
 use uuid::Uuid;
-use chrono::NaiveDateTime;
+use chrono::{NaiveDateTime, DateTime};
 
 #[tokio::test]
 async fn test_get_all_users_success() {
@@ -14,16 +14,16 @@ async fn test_get_all_users_success() {
             username: "alice".to_string(),
             password: "hashed1".to_string(),
             role: Role::User,
-            created_at: Some(NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
-            updated_at: Some(NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
+            created_at: Some(DateTime::from_timestamp(0, 0).unwrap().naive_utc()),
+            updated_at: Some(DateTime::from_timestamp(0, 0).unwrap().naive_utc()),
         },
         User {
             id: Uuid::new_v4(),
             username: "bob".to_string(),
             password: "hashed2".to_string(),
             role: Role::Admin,
-            created_at: Some(NaiveDateTime::from_timestamp_opt(1, 0).unwrap()),
-            updated_at: Some(NaiveDateTime::from_timestamp_opt(1, 0).unwrap()),
+            created_at: Some(DateTime::from_timestamp(1, 0).unwrap().naive_utc()),
+            updated_at: Some(DateTime::from_timestamp(1, 0).unwrap().naive_utc()),
         },
     ];
     let repo = MockUserRepository { 
@@ -73,8 +73,8 @@ async fn test_get_all_users_result_excludes_sensitive_data() {
         username: "testuser".to_string(),
         password: "secret_password".to_string(),
         role: Role::Admin,
-        created_at: Some(NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
-        updated_at: Some(NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
+        created_at: Some(DateTime::from_timestamp(0, 0).unwrap().naive_utc()),
+        updated_at: Some(DateTime::from_timestamp(0, 0).unwrap().naive_utc()),
     };
     let repo = MockUserRepository { 
         users_list: vec![user.clone()],

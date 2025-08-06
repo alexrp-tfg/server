@@ -1,6 +1,4 @@
-pub mod utils {
-    pub mod functions;
-}
+pub mod utils;
 
 // User tests
 mod users {
@@ -41,4 +39,7 @@ mod media {
             mod test_upload_media;
         }
     }
+    
+    pub mod mocks;
+    pub use mocks::*;
 }
