@@ -1,18 +1,18 @@
 // Simple test to validate media upload functionality
 #[cfg(test)]
 mod media_upload_tests {
-    use lib::media::{
-        application::commands::upload_media::{upload_media_command_handler, UploadMediaCommand},
-        domain::{MediaUploadError},
-    };
     use crate::media::{MockMediaRepository, MockStorageService};
+    use lib::media::{
+        application::commands::upload_media::{UploadMediaCommand, upload_media_command_handler},
+        domain::MediaUploadError,
+    };
     use uuid::Uuid;
 
     #[tokio::test]
     async fn test_upload_media_valid_image() {
         let mock_repo = MockMediaRepository::default();
         let mock_storage = MockStorageService::default();
-        
+
         let user_id = Uuid::new_v4();
         let command = UploadMediaCommand {
             user_id,
@@ -23,7 +23,7 @@ mod media_upload_tests {
         };
 
         let result = upload_media_command_handler(command, &mock_repo, &mock_storage).await;
-        
+
         assert!(result.is_ok());
         let upload_result = result.unwrap();
         assert_eq!(upload_result.filename, "test.jpg");
@@ -36,7 +36,7 @@ mod media_upload_tests {
     async fn test_upload_media_invalid_file_type() {
         let mock_repo = MockMediaRepository::default();
         let mock_storage = MockStorageService::default();
-        
+
         let user_id = Uuid::new_v4();
         let command = UploadMediaCommand {
             user_id,
@@ -47,10 +47,10 @@ mod media_upload_tests {
         };
 
         let result = upload_media_command_handler(command, &mock_repo, &mock_storage).await;
-        
+
         assert!(result.is_err());
         match result.unwrap_err() {
-            MediaUploadError::InvalidFileType => {}, // Expected
+            MediaUploadError::InvalidFileType => {} // Expected
             _ => panic!("Expected InvalidFileType error"),
         }
     }

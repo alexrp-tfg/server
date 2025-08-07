@@ -34,3 +34,13 @@ pub enum MediaUploadError {
     #[error("Internal server error")]
     InternalServerError(String),
 }
+
+#[derive(Debug, thiserror::Error)]
+pub enum MediaDeleteError {
+    #[error("Media file not found")]
+    MediaFileNotFound,
+    #[error("Storage error: {0}")]
+    StorageError(String),
+    #[error("Internal server error")]
+    InternalServerError(String),
+}

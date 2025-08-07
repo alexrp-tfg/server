@@ -1,5 +1,10 @@
 use crate::shared::interface::http::mw_require_role;
-use axum::{Json, extract::{Path, State}, http::StatusCode, routing::{get, post}};
+use axum::{
+    Json,
+    extract::{Path, State},
+    http::StatusCode,
+    routing::{get, post},
+};
 use utoipa::OpenApi;
 
 use crate::{
@@ -15,17 +20,15 @@ use crate::{
     users::{
         application::{
             commands::create_user::{
-                create_user_command_handler, CreateUserCommand, CreateUserResult
+                CreateUserCommand, CreateUserResult, create_user_command_handler,
             },
+            login::{LoginCommand, login_command_handler},
             queries::{
-                get_all_users::{get_all_users_query_handler, GetAllUsersResult},
-                get_user::{get_user_query_handler, GetUserQuery, GetUserResult},
+                get_all_users::{GetAllUsersResult, get_all_users_query_handler},
+                get_user::{GetUserQuery, GetUserResult, get_user_query_handler},
             },
-            login::{login_command_handler, LoginCommand},
         },
-        domain::{
-            user::UserLoginError, Role, UserRepositoryError
-        },
+        domain::{Role, UserRepositoryError, user::UserLoginError},
     },
 };
 
@@ -51,9 +54,13 @@ pub async fn create_user(
     match create_user_command_handler(body, state.user_repository.as_ref()).await {
         Ok(user) => Ok((StatusCode::CREATED, ApiResponseBody::new(user).into())),
         Err(err) => match err {
-            UserRepositoryError::UserAlreadyExists=>Err(ApiError::ConflictError(err.to_string())),
-            UserRepositoryError::InternalServerError=>Err(ApiError::InternalServerError(err.to_string())),
-            UserRepositoryError::UserNotFound => Err(ApiError::InternalServerError("Internal server error".to_string())),
+            UserRepositoryError::UserAlreadyExists => Err(ApiError::ConflictError(err.to_string())),
+            UserRepositoryError::InternalServerError => {
+                Err(ApiError::InternalServerError(err.to_string()))
+            }
+            UserRepositoryError::UserNotFound => Err(ApiError::InternalServerError(
+                "Internal server error".to_string(),
+            )),
         },
     }
 }
@@ -116,7 +123,9 @@ pub async fn get_all_users(
 ) -> Result<(StatusCode, Json<ApiResponseBody<Vec<GetAllUsersResult>>>), ApiError> {
     match get_all_users_query_handler(state.user_repository.as_ref()).await {
         Ok(users) => Ok((StatusCode::OK, ApiResponseBody::new(users).into())),
-        Err(_) => Err(ApiError::InternalServerError("Internal server error".to_string())),
+        Err(_) => Err(ApiError::InternalServerError(
+            "Internal server error".to_string(),
+        )),
     }
 }
 
@@ -143,25 +152,29 @@ pub async fn get_all_users(
 )]
 pub async fn get_user(
     State(state): State<AppState>,
-    Path(id): Path<uuid::Uuid>,
+    Path(id): Path<String>,
 ) -> Result<(StatusCode, Json<ApiResponseBody<GetUserResult>>), ApiError> {
+    // Validate UUID format
+    let id = uuid::Uuid::parse_str(&id)
+        .map_err(|_| ApiError::BadRequestError("Invalid user ID format".to_string()))?;
+
     let query = GetUserQuery { id };
     match get_user_query_handler(query, state.user_repository.as_ref()).await {
         Ok(Some(user)) => Ok((StatusCode::OK, ApiResponseBody::new(user).into())),
         Ok(None) => Err(ApiError::NotFoundError("User not found".to_string())),
-        Err(_) => Err(ApiError::InternalServerError("Internal server error".to_string())),
+        Err(_) => Err(ApiError::InternalServerError(
+            "Internal server error".to_string(),
+        )),
     }
 }
 
 // Users api routes
-pub fn api_routes(
-    state: AppState,
-) -> axum::Router<AppState> {
+pub fn api_routes(state: AppState) -> axum::Router<AppState> {
     axum::Router::new()
         .route("/", post(create_user))
         .route_layer(require_roles!(&[Role::Admin]))
         .route("/", get(get_all_users))
-        .route("/{:id}", get(get_user))
+        .route("/{id}", get(get_user))
         .route_layer(protected!(state.clone()))
 }
 

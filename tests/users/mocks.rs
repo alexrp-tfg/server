@@ -1,7 +1,10 @@
-use lib::users::{domain::{user::{User, NewUser, UserLoginError}, Role, UserRepository, UserRepositoryError, Claims, LoginTokenService, Token}};
-use uuid::Uuid;
-use chrono::DateTime;
 use async_trait::async_trait;
+use chrono::DateTime;
+use lib::users::domain::{
+    Claims, LoginTokenService, Role, Token, UserRepository, UserRepositoryError,
+    user::{NewUser, User, UserLoginError},
+};
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Default)]
 pub struct MockUserRepository {
@@ -14,7 +17,10 @@ pub struct MockUserRepository {
 
 #[async_trait]
 impl UserRepository for MockUserRepository {
-    async fn get_by_username(&self, username: String) -> Result<Option<lib::users::domain::User>, UserRepositoryError> {
+    async fn get_by_username(
+        &self,
+        username: String,
+    ) -> Result<Option<lib::users::domain::User>, UserRepositoryError> {
         if self.fail_get {
             return Err(UserRepositoryError::InternalServerError);
         }
@@ -36,7 +42,10 @@ impl UserRepository for MockUserRepository {
         }
     }
 
-    async fn get_by_id(&self, id: Uuid) -> Result<Option<lib::users::domain::User>, UserRepositoryError> {
+    async fn get_by_id(
+        &self,
+        id: Uuid,
+    ) -> Result<Option<lib::users::domain::User>, UserRepositoryError> {
         if self.fail_get {
             return Err(UserRepositoryError::InternalServerError);
         }
@@ -55,7 +64,10 @@ impl UserRepository for MockUserRepository {
         Ok(self.users_list.clone())
     }
 
-    async fn create_user(&self, user: NewUser) -> Result<lib::users::domain::User, UserRepositoryError> {
+    async fn create_user(
+        &self,
+        user: NewUser,
+    ) -> Result<lib::users::domain::User, UserRepositoryError> {
         if self.fail_create {
             return Err(UserRepositoryError::InternalServerError);
         }
@@ -77,7 +89,7 @@ impl UserRepository for MockUserRepository {
 #[derive(Clone, Default)]
 pub struct MockLoginTokenService {
     pub fail: bool,
-    pub validation_fail: bool
+    pub validation_fail: bool,
 }
 
 impl LoginTokenService for MockLoginTokenService {
@@ -90,7 +102,9 @@ impl LoginTokenService for MockLoginTokenService {
     }
     fn validate_token(&self, _token: &str) -> Result<Claims, UserLoginError> {
         if self.validation_fail {
-            Err(UserLoginError::InternalServerError("validation fail".to_string()))
+            Err(UserLoginError::InternalServerError(
+                "validation fail".to_string(),
+            ))
         } else {
             Ok(Claims {
                 sub: Uuid::new_v4(),

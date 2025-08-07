@@ -1,8 +1,11 @@
-use lib::media::domain::{
-    MediaFile, NewMediaFile, MediaRepository, MediaRepositoryError, FileStorageService
+use async_trait::async_trait;
+use lib::{
+    media::domain::{
+        FileStorageService, MediaFile, MediaRepository, MediaRepositoryError, NewMediaFile,
+    },
+    users::domain::{Claims, LoginTokenService, Token, user::UserLoginError},
 };
 use uuid::Uuid;
-use async_trait::async_trait;
 
 #[derive(Debug, Clone, Default)]
 pub struct MockMediaRepository {
@@ -14,7 +17,10 @@ pub struct MockMediaRepository {
 
 #[async_trait]
 impl MediaRepository for MockMediaRepository {
-    async fn create_media_file(&self, media_file: NewMediaFile) -> Result<MediaFile, MediaRepositoryError> {
+    async fn create_media_file(
+        &self,
+        media_file: NewMediaFile,
+    ) -> Result<MediaFile, MediaRepositoryError> {
         if self.fail_save {
             return Err(MediaRepositoryError::InternalServerError);
         }
@@ -31,18 +37,29 @@ impl MediaRepository for MockMediaRepository {
         })
     }
 
-    async fn get_media_file_by_id(&self, _id: Uuid) -> Result<Option<MediaFile>, MediaRepositoryError> {
+    async fn get_media_file_by_id(
+        &self,
+        _id: Uuid,
+    ) -> Result<Option<MediaFile>, MediaRepositoryError> {
         if self.fail_get {
             return Err(MediaRepositoryError::InternalServerError);
         }
         Ok(self.saved_media.clone())
     }
 
-    async fn get_media_files_by_user_id(&self, user_id: Uuid) -> Result<Vec<MediaFile>, MediaRepositoryError> {
+    async fn get_media_files_by_user_id(
+        &self,
+        user_id: Uuid,
+    ) -> Result<Vec<MediaFile>, MediaRepositoryError> {
         if self.fail_get {
             return Err(MediaRepositoryError::InternalServerError);
         }
-        Ok(self.media_files.clone().into_iter().filter(|f| f.user_id == user_id).collect())
+        Ok(self
+            .media_files
+            .clone()
+            .into_iter()
+            .filter(|f| f.user_id == user_id)
+            .collect())
     }
 
     async fn delete_media_file(&self, _id: Uuid) -> Result<(), MediaRepositoryError> {
@@ -56,12 +73,18 @@ impl MediaRepository for MockMediaRepository {
 #[derive(Debug, Clone, Default)]
 pub struct MockStorageService {
     pub fail_upload: bool,
+    pub fail_delete: bool,
     pub uploaded_files: Vec<String>,
 }
 
 #[async_trait]
 impl FileStorageService for MockStorageService {
-    async fn store_file(&self, _file_data: &[u8], file_path: &str, _content_type: &str) -> Result<String, String> {
+    async fn store_file(
+        &self,
+        _file_data: Vec<u8>,
+        file_path: &str,
+        _content_type: &str,
+    ) -> Result<String, String> {
         if self.fail_upload {
             return Err("Mock upload failure".to_string());
         }
@@ -69,10 +92,39 @@ impl FileStorageService for MockStorageService {
     }
 
     async fn delete_file(&self, _file_path: &str) -> Result<(), String> {
+        if self.fail_delete {
+            return Err("Mock delete failure".to_string());
+        }
         Ok(())
     }
 
     async fn get_file_url(&self, file_path: &str) -> Result<String, String> {
         Ok(format!("https://mock-storage.example.com/{}", file_path))
+    }
+}
+
+// Fixed user ID for consistent testing
+const TEST_USER_ID: &str = "550e8400-e29b-41d4-a716-446655440000";
+
+pub fn get_test_user_id() -> Uuid {
+    Uuid::parse_str(TEST_USER_ID).unwrap()
+}
+
+// Custom token service that returns our test user ID
+#[derive(Clone, Default)]
+pub struct TestTokenService;
+
+impl LoginTokenService for TestTokenService {
+    fn create_token(&self, _claims: Claims) -> Result<Token, UserLoginError> {
+        Ok(Token("test_token".to_string()))
+    }
+
+    fn validate_token(&self, _token: &str) -> Result<Claims, UserLoginError> {
+        Ok(Claims {
+            sub: get_test_user_id(),
+            role: lib::users::domain::Role::User,
+            username: "testuser".to_string(),
+            exp: (chrono::Utc::now().timestamp() + 3600) as u64,
+        })
     }
 }

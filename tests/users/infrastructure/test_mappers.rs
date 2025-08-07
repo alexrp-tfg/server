@@ -1,5 +1,8 @@
 use chrono::DateTime;
-use lib::users::{domain::{Role, User}, infrastructure::{models::RowRole, UserRow}};
+use lib::users::{
+    domain::{Role, User},
+    infrastructure::{UserRow, models::RowRole},
+};
 use uuid::Uuid;
 
 #[test]
@@ -15,4 +18,4 @@ fn test_userrow_to_user_from_impl() {
     let user = User::from(row);
     assert_eq!(user.username, "alice");
     assert_eq!(user.role, Role::User);
-} 
+}

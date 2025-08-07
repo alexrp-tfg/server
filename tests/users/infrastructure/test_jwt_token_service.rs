@@ -1,6 +1,8 @@
-use lib::users::{domain::{user::UserLoginError, Claims, LoginTokenService, Role}, infrastructure::jwt_token_service::{JwtTokenConfig, JwtTokenService}};
+use lib::users::{
+    domain::{Claims, LoginTokenService, Role, user::UserLoginError},
+    infrastructure::jwt_token_service::{JwtTokenConfig, JwtTokenService},
+};
 use uuid::Uuid;
-
 
 fn test_claims() -> Claims {
     Claims {
@@ -13,7 +15,9 @@ fn test_claims() -> Claims {
 
 #[test]
 fn test_create_token_success() {
-    let config = JwtTokenConfig { secret_key: "testsecret".to_string() };
+    let config = JwtTokenConfig {
+        secret_key: "testsecret".to_string(),
+    };
     let service = JwtTokenService::new(config.clone());
     let claims = test_claims();
     let token = service.create_token(claims.clone());
@@ -27,8 +31,10 @@ fn test_create_token_success() {
 
 #[test]
 fn test_validate_token_invalid() {
-    let config = JwtTokenConfig { secret_key: "testsecret".to_string() };
+    let config = JwtTokenConfig {
+        secret_key: "testsecret".to_string(),
+    };
     let service = JwtTokenService::new(config);
     let result = service.validate_token("not_a_real_token");
     assert!(matches!(result, Err(UserLoginError::InvalidToken)));
-} 
+}

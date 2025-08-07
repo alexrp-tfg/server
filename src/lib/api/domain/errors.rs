@@ -30,9 +30,7 @@ impl IntoResponse for ApiError {
         match self {
             InternalServerError(message) => (
                 axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ApiErrorBody::new(
-                    message,
-                )),
+                Json(ApiErrorBody::new(message)),
             )
                 .into_response(),
             NotFoundError(message) => (

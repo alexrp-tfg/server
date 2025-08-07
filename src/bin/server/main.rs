@@ -122,6 +122,7 @@ async fn create_storage_service() -> anyhow::Result<MinioStorageService> {
         minio_access_key,
         minio_secret_key,
         minio_bucket,
-    ).await
+    )
+    .await
     .map_err(|e| anyhow::anyhow!("Failed to create storage service: {}", e))
 }

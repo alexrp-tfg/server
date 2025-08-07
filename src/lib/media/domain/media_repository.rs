@@ -13,8 +13,17 @@ pub enum MediaRepositoryError {
 
 #[async_trait]
 pub trait MediaRepository: Send + Sync {
-    async fn create_media_file(&self, media_file: NewMediaFile) -> Result<MediaFile, MediaRepositoryError>;
-    async fn get_media_file_by_id(&self, id: Uuid) -> Result<Option<MediaFile>, MediaRepositoryError>;
-    async fn get_media_files_by_user_id(&self, user_id: Uuid) -> Result<Vec<MediaFile>, MediaRepositoryError>;
+    async fn create_media_file(
+        &self,
+        media_file: NewMediaFile,
+    ) -> Result<MediaFile, MediaRepositoryError>;
+    async fn get_media_file_by_id(
+        &self,
+        id: Uuid,
+    ) -> Result<Option<MediaFile>, MediaRepositoryError>;
+    async fn get_media_files_by_user_id(
+        &self,
+        user_id: Uuid,
+    ) -> Result<Vec<MediaFile>, MediaRepositoryError>;
     async fn delete_media_file(&self, id: Uuid) -> Result<(), MediaRepositoryError>;
 }

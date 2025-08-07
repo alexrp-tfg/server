@@ -10,4 +10,4 @@ fn test_user_repository_error_variants() {
     assert_eq!(format!("{err}"), "Unexpected error");
     let err = UserRepositoryError::UserNotFound;
     assert_eq!(format!("{err}"), "User not found");
-} 
+}

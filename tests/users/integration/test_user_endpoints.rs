@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{
     users::{MockLoginTokenService, MockUserRepository},
     utils::functions::hash_password,
@@ -15,9 +17,7 @@ use lib::{
 use tower::util::ServiceExt;
 use uuid::Uuid;
 
-fn test_app(
-    state: lib::api::http_server::AppState,
-) -> Router<lib::api::http_server::AppState> {
+fn test_app(state: lib::api::http_server::AppState) -> Router<lib::api::http_server::AppState> {
     api_routes(state)
 }
 
@@ -30,7 +30,7 @@ async fn test_health_check() {
         .uri("/healthz")
         .body(Body::empty())
         .unwrap();
-     let response = app.oneshot(request).await.unwrap();
+    let response = app.oneshot(request).await.unwrap();
     assert_eq!(response.status(), StatusCode::OK);
 }
 
@@ -42,8 +42,16 @@ async fn test_get_user_by_id_success() {
         username: "alice".to_string(),
         password: "hashed_password".to_string(),
         role: lib::users::domain::Role::User,
-        created_at: Some(chrono::DateTime::from_timestamp(123456789, 0).unwrap().naive_utc()),
-        updated_at: Some(chrono::DateTime::from_timestamp(987654321, 0).unwrap().naive_utc()),
+        created_at: Some(
+            chrono::DateTime::from_timestamp(123456789, 0)
+                .unwrap()
+                .naive_utc(),
+        ),
+        updated_at: Some(
+            chrono::DateTime::from_timestamp(987654321, 0)
+                .unwrap()
+                .naive_utc(),
+        ),
     };
     let state = create_test_app_state(
         Some(MockUserRepository {
@@ -57,13 +65,15 @@ async fn test_get_user_by_id_success() {
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("GET")
-        .uri(format!("/users/{}", user_id))
+        .uri(format!("/user/{}", user_id))
         .header("Authorization", "Bearer valid_token")
         .body(Body::empty())
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
     assert_eq!(response.status(), StatusCode::OK);
-    let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
     assert_eq!(json["data"]["id"], user_id.to_string());
     assert_eq!(json["data"]["username"], "alice");
@@ -76,7 +86,7 @@ async fn test_get_user_by_id_not_found() {
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("GET")
-        .uri(format!("/users/{}", user_id))
+        .uri(format!("/user/{}", user_id))
         .header("Authorization", "Bearer valid_token")
         .body(Body::empty())
         .unwrap();
@@ -91,7 +101,7 @@ async fn test_get_user_by_id_unauthorized() {
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("GET")
-        .uri(format!("/users/{}", user_id))
+        .uri(format!("/user/{}", user_id))
         .body(Body::empty())
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
@@ -103,17 +113,17 @@ async fn test_get_user_by_id_invalid_token() {
     let user_id = uuid::Uuid::new_v4();
     let state = create_test_app_state(
         None,
-        Some(MockLoginTokenService {
+        Some(Arc::new(MockLoginTokenService {
             validation_fail: true,
             ..MockLoginTokenService::default()
-        }),
+        })),
         None,
         None,
     );
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("GET")
-        .uri(format!("/users/{}", user_id))
+        .uri(format!("/user/{}", user_id))
         .header("Authorization", "Bearer invalid_token")
         .body(Body::empty())
         .unwrap();
@@ -127,7 +137,7 @@ async fn test_get_user_by_id_malformed_uuid() {
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("GET")
-        .uri("/users/not-a-valid-uuid")
+        .uri("/user/not-a-valid-uuid")
         .header("Authorization", "Bearer valid_token")
         .body(Body::empty())
         .unwrap();
@@ -167,13 +177,15 @@ async fn test_get_all_users_success() {
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("GET")
-        .uri("/users")
+        .uri("/user")
         .header("Authorization", "Bearer valid_token")
         .body(Body::empty())
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
     assert_eq!(response.status(), StatusCode::OK);
-    let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
     assert!(json["data"].is_array());
     assert_eq!(json["data"].as_array().unwrap().len(), 2);
@@ -187,13 +199,15 @@ async fn test_get_all_users_empty_list() {
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("GET")
-        .uri("/users")
+        .uri("/user")
         .header("Authorization", "Bearer valid_token")
         .body(Body::empty())
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
     assert_eq!(response.status(), StatusCode::OK);
-    let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
     assert!(json["data"].is_array());
     assert_eq!(json["data"].as_array().unwrap().len(), 0);
@@ -205,7 +219,7 @@ async fn test_get_all_users_unauthorized() {
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("GET")
-        .uri("/users")
+        .uri("/user")
         .body(Body::empty())
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
@@ -216,17 +230,17 @@ async fn test_get_all_users_unauthorized() {
 async fn test_get_all_users_invalid_token() {
     let state = create_test_app_state(
         None,
-        Some(MockLoginTokenService {
+        Some(Arc::new(MockLoginTokenService {
             validation_fail: true,
             ..MockLoginTokenService::default()
-        }),
+        })),
         None,
         None,
     );
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("GET")
-        .uri("/users")
+        .uri("/user")
         .header("Authorization", "Bearer invalid_token")
         .body(Body::empty())
         .unwrap();
@@ -240,7 +254,7 @@ async fn test_user_registration_success() {
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("POST")
-        .uri("/users")
+        .uri("/user")
         .header("content-type", "application/json")
         .header("Authorization", "Bearer valid_token")
         .body(Body::from(
@@ -268,7 +282,7 @@ async fn test_user_registration_duplicate() {
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("POST")
-        .uri("/users")
+        .uri("/user")
         .header("content-type", "application/json")
         .header("Authorization", "Bearer valid_token")
         .body(Body::from(
@@ -296,7 +310,7 @@ async fn test_user_registration_invalid_payload() {
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("POST")
-        .uri("/users")
+        .uri("/user")
         .header("content-type", "application/json")
         .header("Authorization", "Bearer valid_token")
         .body(Body::from(r#"{"username": ""}"#)) // missing password

@@ -22,4 +22,4 @@ fn test_token_struct_serde() {
     let json = serde_json::to_string(&token).unwrap();
     let de: Token = serde_json::from_str(&json).unwrap();
     assert_eq!(token, de);
-} 
+}

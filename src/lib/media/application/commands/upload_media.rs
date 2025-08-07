@@ -3,8 +3,8 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::media::domain::{
-    FileStorageService, MediaFile, MediaRepository, MediaRepositoryError, 
-    MediaUploadError, NewMediaFile
+    FileStorageService, MediaFile, MediaRepository, MediaRepositoryError, MediaUploadError,
+    NewMediaFile,
 };
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -26,7 +26,10 @@ pub struct UploadMediaResult {
     pub uploaded_at: Option<chrono::NaiveDateTime>,
 }
 
-pub async fn upload_media_command_handler<MR: MediaRepository + ?Sized, FS: FileStorageService + ?Sized>(
+pub async fn upload_media_command_handler<
+    MR: MediaRepository + ?Sized,
+    FS: FileStorageService + ?Sized,
+>(
     command: UploadMediaCommand,
     media_repository: &MR,
     storage_service: &FS,
@@ -66,8 +69,12 @@ pub async fn upload_media_command_handler<MR: MediaRepository + ?Sized, FS: File
         .create_media_file(new_media_file)
         .await
         .map_err(|e| match e {
-            MediaRepositoryError::InternalServerError => MediaUploadError::InternalServerError("Database error".to_string()),
-            MediaRepositoryError::MediaFileNotFound => MediaUploadError::InternalServerError("Unexpected error".to_string()),
+            MediaRepositoryError::InternalServerError => {
+                MediaUploadError::InternalServerError("Database error".to_string())
+            }
+            MediaRepositoryError::MediaFileNotFound => {
+                MediaUploadError::InternalServerError("Unexpected error".to_string())
+            }
         })?;
 
     Ok(created_media.into())

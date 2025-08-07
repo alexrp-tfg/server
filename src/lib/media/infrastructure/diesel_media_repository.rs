@@ -3,8 +3,8 @@ use diesel::prelude::*;
 use diesel::r2d2::{ConnectionManager, Pool};
 use uuid::Uuid;
 
-use crate::media::domain::{MediaFile, MediaRepository, MediaRepositoryError, NewMediaFile};
 use super::models::{MediaFileModel, NewMediaFileModel};
+use crate::media::domain::{MediaFile, MediaRepository, MediaRepositoryError, NewMediaFile};
 
 pub struct DieselMediaRepository {
     connection_pool: Pool<ConnectionManager<PgConnection>>,
@@ -18,11 +18,16 @@ impl DieselMediaRepository {
 
 #[async_trait]
 impl MediaRepository for DieselMediaRepository {
-    async fn create_media_file(&self, media_file: NewMediaFile) -> Result<MediaFile, MediaRepositoryError> {
+    async fn create_media_file(
+        &self,
+        media_file: NewMediaFile,
+    ) -> Result<MediaFile, MediaRepositoryError> {
         use crate::schema::media_files::dsl::*;
-        
+
         let new_media_model: NewMediaFileModel = media_file.into();
-        let mut conn = self.connection_pool.get()
+        let mut conn = self
+            .connection_pool
+            .get()
             .map_err(|_| MediaRepositoryError::InternalServerError)?;
 
         let created_media = diesel::insert_into(media_files)
@@ -34,10 +39,15 @@ impl MediaRepository for DieselMediaRepository {
         Ok(created_media.into())
     }
 
-    async fn get_media_file_by_id(&self, media_id: Uuid) -> Result<Option<MediaFile>, MediaRepositoryError> {
+    async fn get_media_file_by_id(
+        &self,
+        media_id: Uuid,
+    ) -> Result<Option<MediaFile>, MediaRepositoryError> {
         use crate::schema::media_files::dsl::*;
-        
-        let mut conn = self.connection_pool.get()
+
+        let mut conn = self
+            .connection_pool
+            .get()
             .map_err(|_| MediaRepositoryError::InternalServerError)?;
 
         let result = media_files
@@ -49,10 +59,15 @@ impl MediaRepository for DieselMediaRepository {
         Ok(result.map(|model| model.into()))
     }
 
-    async fn get_media_files_by_user_id(&self, user_uuid: Uuid) -> Result<Vec<MediaFile>, MediaRepositoryError> {
+    async fn get_media_files_by_user_id(
+        &self,
+        user_uuid: Uuid,
+    ) -> Result<Vec<MediaFile>, MediaRepositoryError> {
         use crate::schema::media_files::dsl::*;
-        
-        let mut conn = self.connection_pool.get()
+
+        let mut conn = self
+            .connection_pool
+            .get()
             .map_err(|_| MediaRepositoryError::InternalServerError)?;
 
         let results = media_files
@@ -66,8 +81,10 @@ impl MediaRepository for DieselMediaRepository {
 
     async fn delete_media_file(&self, media_id: Uuid) -> Result<(), MediaRepositoryError> {
         use crate::schema::media_files::dsl::*;
-        
-        let mut conn = self.connection_pool.get()
+
+        let mut conn = self
+            .connection_pool
+            .get()
             .map_err(|_| MediaRepositoryError::InternalServerError)?;
 
         let deleted_rows = diesel::delete(media_files.filter(id.eq(media_id)))

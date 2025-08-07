@@ -1,9 +1,7 @@
 use chrono::DateTime;
 use lib::users::{
     application::login::{LoginCommand, login_command_handler},
-    domain::{
-        Role, User, user::UserLoginError,
-    },
+    domain::{Role, User, user::UserLoginError},
 };
 use uuid::Uuid;
 

@@ -1,8 +1,8 @@
 use axum::{
     Extension, Json,
-    extract::{Multipart, State},
+    extract::{Multipart, Path, State},
     http::StatusCode,
-    routing::{get, post},
+    routing::{delete, get, post},
 };
 use utoipa::OpenApi;
 use uuid::Uuid;
@@ -17,14 +17,19 @@ use crate::{
     },
     media::{
         application::{
-            commands::upload_media::{
-                UploadMediaCommand, UploadMediaResult, upload_media_command_handler,
+            commands::{
+                delete_media::{
+                    DeleteMediaCommand, DeleteMediaResult, delete_media_command_handler,
+                },
+                upload_media::{
+                    UploadMediaCommand, UploadMediaResult, upload_media_command_handler,
+                },
             },
             queries::get_media_files::{
                 GetMediaFilesQuery, GetMediaFilesResult, get_media_files_query_handler,
             },
         },
-        domain::MediaUploadError,
+        domain::{MediaDeleteError, MediaUploadError},
     },
     protected,
     users::domain::Claims,
@@ -172,16 +177,77 @@ pub async fn get_media_files(
     }
 }
 
+#[utoipa::path(
+    delete,
+    path = "/{media_id}",
+    description = "Delete a media file",
+    tag = "media",
+    params(
+        ("media_id" = String, Path, description = "ID of the media file to delete")
+    ),
+    responses(
+        (status = 200, description = "Media deleted successfully", body = ApiResponseBody<DeleteMediaResult>),
+        (status = 400, description = "Invalid media ID format", body = ApiErrorBody),
+        (status = 404, description = "Media file not found", body = ApiErrorBody),
+        (status = 500, description = "Internal server error", body = ApiErrorBody)
+    ),
+    security(("bearer_auth" = [])),
+)]
+pub async fn delete_media(
+    State(state): State<AppState>,
+    Extension(claims): Extension<Claims>,
+    Path(media_id_str): Path<String>,
+) -> Result<(StatusCode, Json<ApiResponseBody<DeleteMediaResult>>), ApiError> {
+    // Parse UUID manually to provide better error messages
+    let media_id = Uuid::parse_str(&media_id_str)
+        .map_err(|_| ApiError::BadRequestError("Invalid media ID format".to_string()))?;
+
+    let command = DeleteMediaCommand {
+        media_id,
+        user_id: claims.sub,
+    };
+
+    match delete_media_command_handler(
+        command,
+        state.media_repository.as_ref(),
+        state.storage_service.as_ref(),
+    )
+    .await
+    {
+        Ok(result) => Ok((StatusCode::OK, ApiResponseBody::new(result).into())),
+        Err(err) => match err {
+            MediaDeleteError::MediaFileNotFound => {
+                Err(ApiError::NotFoundError("Media file not found".to_string()))
+            }
+            MediaDeleteError::StorageError(msg) => {
+                tracing::event!(target: "server_error", 
+                    tracing::Level::ERROR,
+                    "Failed to delete file from storage service, {}", msg);
+                Err(ApiError::InternalServerError(
+                    "Internal server error, Failed to delete file".to_string(),
+                ))
+            }
+            MediaDeleteError::InternalServerError(msg) => {
+                tracing::error!("Internal server error, {}", msg);
+                Err(ApiError::InternalServerError(
+                    "Internal server error".to_string(),
+                ))
+            }
+        },
+    }
+}
+
 pub fn api_routes(state: AppState) -> axum::Router<AppState> {
     axum::Router::new()
         .route("/upload", post(upload_media))
         .route("/", get(get_media_files))
+        .route("/{media_id}", delete(delete_media))
         .route_layer(protected!(state.clone()))
 }
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(upload_media, get_media_files),
+    paths(upload_media, get_media_files, delete_media),
     tags(
         (name = "media", description = "Media upload and management API")
     )

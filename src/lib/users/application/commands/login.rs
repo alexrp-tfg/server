@@ -4,8 +4,9 @@ use utoipa::ToSchema;
 use validator::Validate;
 
 use crate::users::domain::{
-        user::{UserLogin, UserLoginError}, Claims, LoginTokenService, Token, UserRepository
-    };
+    Claims, LoginTokenService, Token, UserRepository,
+    user::{UserLogin, UserLoginError},
+};
 
 #[derive(Debug, ToSchema, Deserialize, Validate)]
 pub struct LoginCommand {
@@ -35,7 +36,8 @@ pub async fn login_command_handler(
     let password_valid = match &user {
         Some(user) => {
             // User exists, verify against stored hash
-            let parsed_hash = PasswordHash::new(&user.password).map_err(|_| UserLoginError::InvalidCredentials)?;
+            let parsed_hash = PasswordHash::new(&user.password)
+                .map_err(|_| UserLoginError::InvalidCredentials)?;
             Argon2::default()
                 .verify_password(command.password.as_bytes(), &parsed_hash)
                 .is_ok()
@@ -44,9 +46,9 @@ pub async fn login_command_handler(
             // User doesn't exist, perform dummy hash verification to maintain consistent timing
             // and prevent timing attacks
             let dummy_hash = "$argon2id$v=19$m=19456,t=2,p=1$WNVqi0q634KvbTplSaeTjQ$9MDsb3afPzQmWX5pZVVb9/cWjFmdWAqPzQMMX2tomSs";
-            let parsed_hash = PasswordHash::new(dummy_hash).map_err(|_| UserLoginError::InvalidCredentials)?;
-            let _ = Argon2::default()
-                .verify_password(command.password.as_bytes(), &parsed_hash);
+            let parsed_hash =
+                PasswordHash::new(dummy_hash).map_err(|_| UserLoginError::InvalidCredentials)?;
+            let _ = Argon2::default().verify_password(command.password.as_bytes(), &parsed_hash);
             // Always return false for non-existent users, regardless of dummy hash result
             false
         }

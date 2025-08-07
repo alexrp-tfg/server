@@ -1,5 +1,5 @@
-use crate::media::domain::{MediaFile, NewMediaFile};
 use super::models::{MediaFileModel, NewMediaFileModel};
+use crate::media::domain::{MediaFile, NewMediaFile};
 
 impl From<MediaFileModel> for MediaFile {
     fn from(model: MediaFileModel) -> Self {

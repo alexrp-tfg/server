@@ -1,7 +1,7 @@
 use serde::Serialize;
 use utoipa::ToSchema;
 
-use crate::users::domain::{User, UserRepository, UserRepositoryError, Role};
+use crate::users::domain::{Role, User, UserRepository, UserRepositoryError};
 
 #[derive(Debug, Serialize, ToSchema, Clone, PartialEq, Eq)]
 pub struct GetAllUsersResult {

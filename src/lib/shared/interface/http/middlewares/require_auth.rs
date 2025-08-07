@@ -49,10 +49,9 @@ pub async fn mw_require_role(
 ) -> Result<Response<Body>, Response<Body>> {
     // Extract claims from request extensions (should be set by mw_require_auth)
     println!("Extracting claims from request extensions");
-    let claims = req.extensions().get::<Claims>()
-        .ok_or_else(|| {
-            ApiError::UnauthorizedError("Missing authentication".to_string()).into_response()
-        })?;
+    let claims = req.extensions().get::<Claims>().ok_or_else(|| {
+        ApiError::UnauthorizedError("Missing authentication".to_string()).into_response()
+    })?;
 
     // Check if user's role is in the allowed roles
     if allowed_roles.contains(&claims.role) {
@@ -66,7 +65,10 @@ pub async fn mw_require_role(
 #[macro_export]
 macro_rules! protected {
     ($state:expr) => {
-        axum::middleware::from_fn_with_state($state, $crate::shared::interface::http::middlewares::require_auth::mw_require_auth)
+        axum::middleware::from_fn_with_state(
+            $state,
+            $crate::shared::interface::http::middlewares::require_auth::mw_require_auth,
+        )
     };
 }
 
@@ -74,8 +76,6 @@ macro_rules! protected {
 #[macro_export]
 macro_rules! require_roles {
     ($roles:expr) => {
-        axum::middleware::from_fn(move |req, next| {
-            mw_require_role($roles, req, next)
-        })
+        axum::middleware::from_fn(move |req, next| mw_require_role($roles, req, next))
     };
 }

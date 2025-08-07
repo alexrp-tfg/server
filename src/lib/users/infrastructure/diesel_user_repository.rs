@@ -59,7 +59,8 @@ impl UserRepository for DieselUserRepository {
     ) -> Result<Option<User>, UserRepositoryError> {
         use schema::users::dsl::*;
         // Get a connection from the pool
-        let mut conn = self.pool
+        let mut conn = self
+            .pool
             .get()
             .map_err(|_| UserRepositoryError::InternalServerError)?;
 
@@ -76,7 +77,8 @@ impl UserRepository for DieselUserRepository {
     async fn get_by_id(&self, user_id: uuid::Uuid) -> Result<Option<User>, UserRepositoryError> {
         use schema::users::dsl::*;
         // Get a connection from the pool
-        let mut conn = self.pool
+        let mut conn = self
+            .pool
             .get()
             .map_err(|_| UserRepositoryError::InternalServerError)?;
 
@@ -93,7 +95,8 @@ impl UserRepository for DieselUserRepository {
     async fn get_all_users(&self) -> Result<Vec<User>, UserRepositoryError> {
         use schema::users::dsl::*;
         // Get a connection from the pool
-        let mut conn = self.pool
+        let mut conn = self
+            .pool
             .get()
             .map_err(|_| UserRepositoryError::InternalServerError)?;
 
