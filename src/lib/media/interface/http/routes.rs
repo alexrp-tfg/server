@@ -1,8 +1,5 @@
 use axum::{
-    Extension, Json,
-    extract::{Multipart, Path, State},
-    http::StatusCode,
-    routing::{delete, get, post},
+    body::Body, extract::{FromRequest, Multipart, Path, Request, State}, http::StatusCode, routing::{delete, get, post}, Extension, Json
 };
 use utoipa::OpenApi;
 use uuid::Uuid;
@@ -60,8 +57,12 @@ struct UploadMediaRequestBody {
 pub async fn upload_media(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
-    mut multipart: Multipart,
+    req: Request<Body>,
 ) -> Result<(StatusCode, Json<ApiResponseBody<UploadMediaResult>>), ApiError> {
+    let mut multipart = Multipart::from_request(req, &state)
+        .await
+        .map_err(|_| ApiError::BadRequestError("Invalid multipart data".to_string()))?;
+
     let mut file_data: Option<Vec<u8>> = None;
     let mut filename: Option<String> = None;
     let mut content_type: Option<String> = None;
@@ -69,7 +70,7 @@ pub async fn upload_media(
     while let Some(field) = multipart
         .next_field()
         .await
-        .map_err(|e| ApiError::BadRequestError(format!("Invalid multipart data: {}", e)))?
+        .map_err(|_| ApiError::BadRequestError("Invalid multipart data".to_string()))?
     {
         let field_name = field.name().unwrap_or("").to_string();
 
