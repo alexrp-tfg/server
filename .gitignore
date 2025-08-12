@@ -1,3 +1,4 @@
 /target
 .env
 src/lib/persistence/domain/schema.rs
+http_client/http-client.env.json

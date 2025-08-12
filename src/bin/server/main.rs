@@ -6,7 +6,10 @@ use diesel::{
 };
 use lib::{
     api::http_server::HttpServer,
-    media::infrastructure::{DieselMediaRepository, MinioStorageService},
+    media::{
+        domain::ImageThumbnailService,
+        infrastructure::{DieselMediaRepository, MinioStorageService},
+    },
     users::{
         application::create_user::create_user_command_handler,
         infrastructure::{
@@ -47,12 +50,17 @@ async fn main() -> anyhow::Result<()> {
     // Media services
     let media_repository = DieselMediaRepository::new((*connection_pool).clone());
     let storage_service = create_storage_service().await?;
+    let thumbnail_service = ImageThumbnailService::new(
+        DieselMediaRepository::new((*connection_pool).clone()),
+        create_storage_service().await?,
+    );
 
     let server = HttpServer::new(
         user_repository,
         login_token_service,
         media_repository,
         storage_service,
+        thumbnail_service,
     )
     .await?;
 

@@ -53,15 +53,13 @@ async fn test_get_user_by_id_success() {
                 .naive_utc(),
         ),
     };
-    let state = create_test_app_state(
-        Some(MockUserRepository {
+    let state = create_test_app_state(CreateTestAppStateArguments {
+        user_repo: Some(MockUserRepository {
             user: Some(user.clone()),
             ..MockUserRepository::default()
         }),
-        None,
-        None,
-        None,
-    );
+        ..CreateTestAppStateArguments::default()
+    });
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("GET")
@@ -82,7 +80,7 @@ async fn test_get_user_by_id_success() {
 #[tokio::test]
 async fn test_get_user_by_id_not_found() {
     let user_id = uuid::Uuid::new_v4();
-    let state = create_test_app_state(None, None, None, None);
+    let state = create_default_test_app_state();
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("GET")
@@ -97,7 +95,7 @@ async fn test_get_user_by_id_not_found() {
 #[tokio::test]
 async fn test_get_user_by_id_unauthorized() {
     let user_id = uuid::Uuid::new_v4();
-    let state = create_test_app_state(None, None, None, None);
+    let state = create_default_test_app_state();
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("GET")
@@ -111,15 +109,13 @@ async fn test_get_user_by_id_unauthorized() {
 #[tokio::test]
 async fn test_get_user_by_id_invalid_token() {
     let user_id = uuid::Uuid::new_v4();
-    let state = create_test_app_state(
-        None,
-        Some(Arc::new(MockLoginTokenService {
+    let state = create_test_app_state(CreateTestAppStateArguments {
+        token_service: Some(Arc::new(MockLoginTokenService {
             validation_fail: true,
             ..MockLoginTokenService::default()
         })),
-        None,
-        None,
-    );
+        ..CreateTestAppStateArguments::default()
+    });
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("GET")
@@ -133,7 +129,7 @@ async fn test_get_user_by_id_invalid_token() {
 
 #[tokio::test]
 async fn test_get_user_by_id_malformed_uuid() {
-    let state = create_test_app_state(None, None, None, None);
+    let state = create_default_test_app_state();
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("GET")
@@ -165,15 +161,13 @@ async fn test_get_all_users_success() {
             updated_at: Some(chrono::DateTime::from_timestamp(1, 0).unwrap().naive_utc()),
         },
     ];
-    let state = create_test_app_state(
-        Some(MockUserRepository {
+    let state = create_test_app_state(CreateTestAppStateArguments {
+        user_repo: Some(MockUserRepository {
             users_list: users.clone(),
             ..MockUserRepository::default()
         }),
-        None,
-        None,
-        None,
-    );
+        ..CreateTestAppStateArguments::default()
+    });
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("GET")
@@ -195,7 +189,7 @@ async fn test_get_all_users_success() {
 
 #[tokio::test]
 async fn test_get_all_users_empty_list() {
-    let state = create_test_app_state(None, None, None, None);
+    let state = create_default_test_app_state();
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("GET")
@@ -215,7 +209,7 @@ async fn test_get_all_users_empty_list() {
 
 #[tokio::test]
 async fn test_get_all_users_unauthorized() {
-    let state = create_test_app_state(None, None, None, None);
+    let state = create_default_test_app_state();
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("GET")
@@ -228,15 +222,13 @@ async fn test_get_all_users_unauthorized() {
 
 #[tokio::test]
 async fn test_get_all_users_invalid_token() {
-    let state = create_test_app_state(
-        None,
-        Some(Arc::new(MockLoginTokenService {
+    let state = create_test_app_state(CreateTestAppStateArguments {
+        token_service: Some(Arc::new(MockLoginTokenService {
             validation_fail: true,
             ..MockLoginTokenService::default()
         })),
-        None,
-        None,
-    );
+        ..CreateTestAppStateArguments::default()
+    });
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("GET")
@@ -250,7 +242,7 @@ async fn test_get_all_users_invalid_token() {
 
 #[tokio::test]
 async fn test_user_registration_success() {
-    let state = create_test_app_state(None, None, None, None);
+    let state = create_default_test_app_state();
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("POST")
@@ -267,18 +259,16 @@ async fn test_user_registration_success() {
 
 #[tokio::test]
 async fn test_user_registration_duplicate() {
-    let state = create_test_app_state(
-        Some(MockUserRepository {
+    let state = create_test_app_state(CreateTestAppStateArguments {
+        user_repo: Some(MockUserRepository {
             user_exists: true,
             fail_create: false,
             fail_get: false,
             user: None,
             users_list: vec![],
         }),
-        None,
-        None,
-        None,
-    );
+        ..CreateTestAppStateArguments::default()
+    });
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("POST")
@@ -295,18 +285,16 @@ async fn test_user_registration_duplicate() {
 
 #[tokio::test]
 async fn test_user_registration_invalid_payload() {
-    let state = create_test_app_state(
-        Some(MockUserRepository {
+    let state = create_test_app_state(CreateTestAppStateArguments {
+        user_repo: Some(MockUserRepository {
             user_exists: true,
             fail_create: false,
             fail_get: false,
             user: None,
             users_list: vec![],
         }),
-        None,
-        None,
-        None,
-    );
+        ..CreateTestAppStateArguments::default()
+    });
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("POST")
@@ -336,7 +324,10 @@ async fn test_login_success() {
         user: Some(user.clone()),
         users_list: vec![user],
     };
-    let state = create_test_app_state(Some(user_repository), None, None, None);
+    let state = create_test_app_state(CreateTestAppStateArguments {
+        user_repo: Some(user_repository),
+        ..CreateTestAppStateArguments::default()
+    });
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("POST")
@@ -357,7 +348,7 @@ async fn test_login_success() {
 
 #[tokio::test]
 async fn test_login_invalid_credentials() {
-    let state = create_test_app_state(None, None, None, None);
+    let state = create_default_test_app_state();
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("POST")

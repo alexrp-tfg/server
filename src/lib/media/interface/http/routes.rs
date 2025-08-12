@@ -1,5 +1,9 @@
 use axum::{
-    body::Body, extract::{FromRequest, Multipart, Path, Request, State}, http::StatusCode, routing::{delete, get, post}, Extension, Json
+    Extension, Json,
+    body::Body,
+    extract::{FromRequest, Multipart, Path, Request, State},
+    http::StatusCode,
+    routing::{delete, get, post},
 };
 use utoipa::OpenApi;
 use uuid::Uuid;
@@ -112,10 +116,10 @@ pub async fn upload_media(
 
     let command = UploadMediaCommand {
         user_id: claims.sub,
-        filename: unique_filename,
+        filename: unique_filename.clone(),
         original_filename,
-        file_data,
-        content_type,
+        file_data: file_data.clone(),
+        content_type: content_type.clone(),
     };
 
     match upload_media_command_handler(
@@ -125,7 +129,23 @@ pub async fn upload_media(
     )
     .await
     {
-        Ok(result) => Ok((StatusCode::CREATED, ApiResponseBody::new(result).into())),
+        Ok(result) => {
+            let media_id = result.id;
+            let file_path = format!("media/{}/{}", claims.sub, unique_filename);
+            let thumbnail_service = state.thumbnail_service.clone();
+
+            tokio::spawn(async move {
+                tracing::info!("Generating thumbnail for media {}", media_id);
+                if let Err(e) = thumbnail_service
+                    .generate_thumbnail(media_id, &file_path, file_data, &content_type)
+                    .await
+                {
+                    tracing::warn!("Failed to generate thumbnail for media {}: {}", media_id, e);
+                }
+            });
+
+            Ok((StatusCode::CREATED, ApiResponseBody::new(result).into()))
+        }
         Err(err) => match err {
             MediaUploadError::InvalidFileType => Err(ApiError::BadRequestError(
                 "Invalid file type. Only images and videos are allowed".to_string(),

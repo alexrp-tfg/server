@@ -10,7 +10,7 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use crate::{
     api::routes::{api_routes, combine_openapi},
-    media::domain::{FileStorageService, MediaRepository},
+    media::domain::{FileStorageService, MediaRepository, ThumbnailService},
     users::domain::{LoginTokenService, UserRepository},
 };
 
@@ -21,6 +21,7 @@ pub struct AppState {
     pub login_token_service: Arc<dyn LoginTokenService>,
     pub media_repository: Arc<dyn MediaRepository>,
     pub storage_service: Arc<dyn FileStorageService>,
+    pub thumbnail_service: Arc<dyn ThumbnailService>,
 }
 
 pub struct HttpServer {
@@ -34,6 +35,7 @@ impl HttpServer {
         login_token_service: impl LoginTokenService + 'static,
         media_repository: impl MediaRepository + 'static,
         storage_service: impl FileStorageService + 'static,
+        thumbnail_service: impl ThumbnailService + 'static,
     ) -> anyhow::Result<Self> {
         dotenvy::dotenv().context("Failed to load .env file")?;
 
@@ -42,6 +44,7 @@ impl HttpServer {
             login_token_service: Arc::new(login_token_service),
             media_repository: Arc::new(media_repository),
             storage_service: Arc::new(storage_service),
+            thumbnail_service: Arc::new(thumbnail_service),
         };
 
         // Initialize tracing for the application

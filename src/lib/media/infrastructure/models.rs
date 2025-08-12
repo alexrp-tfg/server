@@ -13,6 +13,7 @@ pub struct MediaFileModel {
     pub file_size: i64,
     pub content_type: String,
     pub file_path: String,
+    pub thumbnail_path: Option<String>,
     pub uploaded_at: Option<chrono::NaiveDateTime>,
     pub updated_at: Option<chrono::NaiveDateTime>,
 }
@@ -26,4 +27,5 @@ pub struct NewMediaFileModel {
     pub file_size: i64,
     pub content_type: String,
     pub file_path: String,
+    pub thumbnail_path: Option<String>,
 }

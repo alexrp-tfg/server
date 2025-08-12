@@ -1,0 +1,13 @@
+{
+  "$shared": {
+    "$default_headers": []
+  },
+  "$schema": "https://raw.githubusercontent.com/mistweaverco/kulala.nvim/main/schemas/http-client.env.schema.json",
+  "prod": [],
+  "dev": {
+    "base_url": "http://localhost:8000/api",
+    "Security": {
+      "Auth": []
+    }
+  }
+}

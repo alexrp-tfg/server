@@ -63,6 +63,7 @@ pub async fn upload_media_command_handler<
         file_size,
         content_type: command.content_type,
         file_path,
+        thumbnail_path: None,
     };
 
     let created_media = media_repository

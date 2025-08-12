@@ -9,6 +9,7 @@ pub struct MediaFile {
     pub file_size: i64,
     pub content_type: String,
     pub file_path: String,
+    pub thumbnail_path: Option<String>,
     pub uploaded_at: Option<chrono::NaiveDateTime>,
     pub updated_at: Option<chrono::NaiveDateTime>,
 }
@@ -21,6 +22,7 @@ pub struct NewMediaFile {
     pub file_size: i64,
     pub content_type: String,
     pub file_path: String,
+    pub thumbnail_path: Option<String>,
 }
 
 #[derive(Debug, thiserror::Error)]

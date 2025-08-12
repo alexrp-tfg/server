@@ -26,4 +26,9 @@ pub trait MediaRepository: Send + Sync {
         user_id: Uuid,
     ) -> Result<Vec<MediaFile>, MediaRepositoryError>;
     async fn delete_media_file(&self, id: Uuid) -> Result<(), MediaRepositoryError>;
+    async fn update_thumbnail_path(
+        &self,
+        id: Uuid,
+        thumbnail_path: Option<String>,
+    ) -> Result<(), MediaRepositoryError>;
 }

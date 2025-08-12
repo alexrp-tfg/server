@@ -11,6 +11,7 @@ impl From<MediaFileModel> for MediaFile {
             file_size: model.file_size,
             content_type: model.content_type,
             file_path: model.file_path,
+            thumbnail_path: model.thumbnail_path,
             uploaded_at: model.uploaded_at,
             updated_at: model.updated_at,
         }
@@ -26,6 +27,7 @@ impl From<NewMediaFile> for NewMediaFileModel {
             file_size: new_media.file_size,
             content_type: new_media.content_type,
             file_path: new_media.file_path,
+            thumbnail_path: new_media.thumbnail_path,
         }
     }
 }

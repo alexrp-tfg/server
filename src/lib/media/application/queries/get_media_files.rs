@@ -17,6 +17,7 @@ pub struct GetMediaFilesResult {
     pub file_size: i64,
     pub content_type: String,
     pub file_path: String,
+    pub thumbnail_path: Option<String>,
     pub uploaded_at: Option<chrono::NaiveDateTime>,
 }
 
@@ -40,6 +41,7 @@ impl From<MediaFile> for GetMediaFilesResult {
             file_size: media_file.file_size,
             content_type: media_file.content_type,
             file_path: media_file.file_path,
+            thumbnail_path: media_file.thumbnail_path,
             uploaded_at: media_file.uploaded_at,
         }
     }

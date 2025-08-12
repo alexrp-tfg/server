@@ -23,6 +23,7 @@ mod media_delete_tests {
             file_path: format!("media/{}/test.jpg", user_id),
             uploaded_at: Some(chrono::Utc::now().naive_utc()),
             updated_at: Some(chrono::Utc::now().naive_utc()),
+            thumbnail_path: None,
         };
 
         let mock_repo = MockMediaRepository {
@@ -79,6 +80,7 @@ mod media_delete_tests {
             file_path: format!("media/{}/test.jpg", other_user_id),
             uploaded_at: Some(chrono::Utc::now().naive_utc()),
             updated_at: Some(chrono::Utc::now().naive_utc()),
+            thumbnail_path: None,
         };
 
         let mock_repo = MockMediaRepository {
@@ -116,6 +118,7 @@ mod media_delete_tests {
             file_path: format!("media/{}/test.jpg", user_id),
             uploaded_at: Some(chrono::Utc::now().naive_utc()),
             updated_at: Some(chrono::Utc::now().naive_utc()),
+            thumbnail_path: None,
         };
 
         let mock_repo = MockMediaRepository {
@@ -151,6 +154,7 @@ mod media_delete_tests {
             file_path: format!("media/{}/test.jpg", user_id),
             uploaded_at: Some(chrono::Utc::now().naive_utc()),
             updated_at: Some(chrono::Utc::now().naive_utc()),
+            thumbnail_path: None,
         };
 
         let mock_repo = MockMediaRepository {

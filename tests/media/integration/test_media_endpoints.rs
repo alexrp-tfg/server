@@ -31,6 +31,7 @@ async fn test_get_media_files_success() {
             file_path: format!("media/{}/image1.jpg", user_id),
             uploaded_at: Some(chrono::Utc::now().naive_utc()),
             updated_at: Some(chrono::Utc::now().naive_utc()),
+            thumbnail_path: Some(format!("media/{}/thumb_image1.jpg", user_id)),
         },
         MediaFile {
             id: Uuid::new_v4(),
@@ -42,18 +43,18 @@ async fn test_get_media_files_success() {
             file_path: format!("media/{}/video1.mp4", user_id),
             uploaded_at: Some(chrono::Utc::now().naive_utc()),
             updated_at: Some(chrono::Utc::now().naive_utc()),
+            thumbnail_path: Some(format!("media/{}/thumb_video1.jpg", user_id)),
         },
     ];
 
-    let state = create_test_app_state(
-        None,
-        Some(Arc::new(TestTokenService)),
-        Some(MockMediaRepository {
+    let state = create_test_app_state(CreateTestAppStateArguments {
+        token_service: Some(Arc::new(TestTokenService)),
+        media_repo: Some(MockMediaRepository {
             media_files: media_files.clone(),
             ..MockMediaRepository::default()
         }),
-        None,
-    );
+        ..CreateTestAppStateArguments::default()
+    });
 
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
@@ -72,11 +73,27 @@ async fn test_get_media_files_success() {
     assert_eq!(json["data"].as_array().unwrap().len(), 2);
     assert_eq!(json["data"][0]["filename"], "image1.jpg");
     assert_eq!(json["data"][1]["filename"], "video1.mp4");
+
+    // Check if thumbnails are present
+    assert!(json["data"][0]["thumbnail_path"].is_string());
+    assert!(json["data"][1]["thumbnail_path"].is_string());
+    assert!(
+        json["data"][0]["thumbnail_path"]
+            .as_str()
+            .unwrap()
+            .contains("thumb_image1.jpg")
+    );
+    assert!(
+        json["data"][1]["thumbnail_path"]
+            .as_str()
+            .unwrap()
+            .contains("thumb_video1.jpg")
+    );
 }
 
 #[tokio::test]
 async fn test_get_media_files_empty_list() {
-    let state = create_test_app_state(None, None, None, None);
+    let state = create_default_test_app_state();
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("GET")
@@ -122,17 +139,17 @@ async fn test_delete_media_success() {
         file_path: format!("media/{}/test.jpg", user_id),
         uploaded_at: Some(chrono::Utc::now().naive_utc()),
         updated_at: Some(chrono::Utc::now().naive_utc()),
+        thumbnail_path: None,
     };
 
-    let state = create_test_app_state(
-        None,
-        Some(Arc::new(TestTokenService)),
-        Some(MockMediaRepository {
+    let state = create_test_app_state(CreateTestAppStateArguments {
+        token_service: Some(Arc::new(TestTokenService)),
+        media_repo: Some(MockMediaRepository {
             saved_media: Some(media_file.clone()),
             ..MockMediaRepository::default()
         }),
-        None,
-    );
+        ..CreateTestAppStateArguments::default()
+    });
 
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
@@ -154,7 +171,7 @@ async fn test_delete_media_success() {
 #[tokio::test]
 async fn test_delete_media_not_found() {
     let media_id = Uuid::new_v4();
-    let state = create_test_app_state(None, None, None, None);
+    let state = create_default_test_app_state();
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("DELETE")
@@ -169,7 +186,7 @@ async fn test_delete_media_not_found() {
 #[tokio::test]
 async fn test_delete_media_unauthorized() {
     let media_id = Uuid::new_v4();
-    let state = create_test_app_state(None, None, None, None);
+    let state = create_default_test_app_state();
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("DELETE")
@@ -182,7 +199,7 @@ async fn test_delete_media_unauthorized() {
 
 #[tokio::test]
 async fn test_delete_media_invalid_uuid() {
-    let state = create_test_app_state(None, None, None, None);
+    let state = create_default_test_app_state();
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("DELETE")
@@ -196,7 +213,7 @@ async fn test_delete_media_invalid_uuid() {
 
 #[tokio::test]
 async fn test_upload_media_invalid_file_type() {
-    let state = create_test_app_state(None, None, None, None);
+    let state = create_default_test_app_state();
     let app = test_app(state.clone()).with_state(state);
 
     let boundary = "----formdata-test-boundary";
@@ -221,7 +238,7 @@ async fn test_upload_media_invalid_file_type() {
 
 #[tokio::test]
 async fn test_upload_media_no_file() {
-    let state = create_test_app_state(None, None, None, None);
+    let state = create_default_test_app_state();
     let app = test_app(state.clone()).with_state(state);
 
     let boundary = "----formdata-test-boundary";
@@ -243,7 +260,7 @@ async fn test_upload_media_no_file() {
 
 #[tokio::test]
 async fn test_upload_media_unauthorized() {
-    let state = create_test_app_state(None, None, None, None);
+    let state = create_default_test_app_state();
     let app = test_app(state.clone()).with_state(state);
 
     let boundary = "----formdata-test-boundary";

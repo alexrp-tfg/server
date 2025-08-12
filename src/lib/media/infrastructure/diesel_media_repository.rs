@@ -52,6 +52,7 @@ impl MediaRepository for DieselMediaRepository {
 
         let result = media_files
             .filter(id.eq(media_id))
+            .select(MediaFileModel::as_select())
             .first::<MediaFileModel>(&mut conn)
             .optional()
             .map_err(|_| MediaRepositoryError::InternalServerError)?;
@@ -73,6 +74,7 @@ impl MediaRepository for DieselMediaRepository {
         let results = media_files
             .filter(user_id.eq(user_uuid))
             .order(uploaded_at.desc())
+            .select(MediaFileModel::as_select())
             .load::<MediaFileModel>(&mut conn)
             .map_err(|_| MediaRepositoryError::InternalServerError)?;
 
@@ -92,6 +94,30 @@ impl MediaRepository for DieselMediaRepository {
             .map_err(|_| MediaRepositoryError::InternalServerError)?;
 
         if deleted_rows == 0 {
+            Err(MediaRepositoryError::MediaFileNotFound)
+        } else {
+            Ok(())
+        }
+    }
+
+    async fn update_thumbnail_path(
+        &self,
+        media_id: Uuid,
+        thumbnail_path_value: Option<String>,
+    ) -> Result<(), MediaRepositoryError> {
+        use crate::schema::media_files::dsl::*;
+
+        let mut conn = self
+            .connection_pool
+            .get()
+            .map_err(|_| MediaRepositoryError::InternalServerError)?;
+
+        let updated_rows = diesel::update(media_files.filter(id.eq(media_id)))
+            .set(thumbnail_path.eq(thumbnail_path_value))
+            .execute(&mut conn)
+            .map_err(|_| MediaRepositoryError::InternalServerError)?;
+
+        if updated_rows == 0 {
             Err(MediaRepositoryError::MediaFileNotFound)
         } else {
             Ok(())

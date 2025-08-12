@@ -1,7 +1,10 @@
 use async_trait::async_trait;
 use lib::{
-    media::domain::{
-        FileStorageService, MediaFile, MediaRepository, MediaRepositoryError, NewMediaFile,
+    media::{
+        ThumbnailError, ThumbnailService,
+        domain::{
+            FileStorageService, MediaFile, MediaRepository, MediaRepositoryError, NewMediaFile,
+        },
     },
     users::domain::{Claims, LoginTokenService, Token, user::UserLoginError},
 };
@@ -34,6 +37,7 @@ impl MediaRepository for MockMediaRepository {
             file_path: media_file.file_path,
             uploaded_at: Some(chrono::Utc::now().naive_utc()),
             updated_at: Some(chrono::Utc::now().naive_utc()),
+            thumbnail_path: media_file.thumbnail_path,
         })
     }
 
@@ -67,6 +71,20 @@ impl MediaRepository for MockMediaRepository {
             return Err(MediaRepositoryError::InternalServerError);
         }
         Ok(())
+    }
+
+    async fn update_thumbnail_path(
+        &self,
+        id: Uuid,
+        _thumbnail_path: Option<String>,
+    ) -> Result<(), MediaRepositoryError> {
+        if self.fail_save {
+            return Err(MediaRepositoryError::InternalServerError);
+        }
+        match self.media_files.iter().find(|f| f.id == id) {
+            Some(_) => Ok(()),
+            None => Err(MediaRepositoryError::MediaFileNotFound),
+        }
     }
 }
 
@@ -126,5 +144,29 @@ impl LoginTokenService for TestTokenService {
             username: "testuser".to_string(),
             exp: (chrono::Utc::now().timestamp() + 3600) as u64,
         })
+    }
+}
+
+#[derive(Clone, Default)]
+pub struct MockThumbnailService {
+    pub fail_generate: bool,
+}
+
+#[async_trait]
+impl ThumbnailService for MockThumbnailService {
+    async fn generate_thumbnail(
+        &self,
+        _media_id: Uuid,
+        _original_path: &str,
+        _image_data: Vec<u8>,
+        _content_type: &str,
+    ) -> Result<(), ThumbnailError> {
+        // Mock implementation does nothing
+        if self.fail_generate {
+            return Err(ThumbnailError::ImageProcessingError(
+                "Mock thumbnail generation failure".to_string(),
+            ));
+        }
+        Ok(())
     }
 }
