@@ -4,6 +4,7 @@ use diesel::r2d2::{ConnectionManager, Pool};
 use uuid::Uuid;
 
 use super::models::{MediaFileModel, NewMediaFileModel};
+use crate::media::MediaId;
 use crate::media::domain::{MediaFile, MediaRepository, MediaRepositoryError, NewMediaFile};
 
 pub struct DieselMediaRepository {
@@ -41,7 +42,7 @@ impl MediaRepository for DieselMediaRepository {
 
     async fn get_media_file_by_id(
         &self,
-        media_id: Uuid,
+        media_id: MediaId,
     ) -> Result<Option<MediaFile>, MediaRepositoryError> {
         use crate::schema::media_files::dsl::*;
 
@@ -102,7 +103,7 @@ impl MediaRepository for DieselMediaRepository {
 
     async fn update_thumbnail_path(
         &self,
-        media_id: Uuid,
+        media_id: MediaId,
         thumbnail_path_value: Option<String>,
     ) -> Result<(), MediaRepositoryError> {
         use crate::schema::media_files::dsl::*;
@@ -122,5 +123,26 @@ impl MediaRepository for DieselMediaRepository {
         } else {
             Ok(())
         }
+    }
+
+    async fn get_media_path_by_id(
+        &self,
+        media_id: MediaId,
+    ) -> Result<String, MediaRepositoryError> {
+        use crate::schema::media_files::dsl::*;
+
+        let mut conn = self
+            .connection_pool
+            .get()
+            .map_err(|_| MediaRepositoryError::InternalServerError)?;
+
+        media_files
+            .filter(id.eq(media_id))
+            .select(file_path)
+            .first::<String>(&mut conn)
+            .map_err(|e| match e {
+                diesel::result::Error::NotFound => MediaRepositoryError::MediaFileNotFound,
+                _ => MediaRepositoryError::InternalServerError,
+            })
     }
 }

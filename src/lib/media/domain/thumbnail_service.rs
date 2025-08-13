@@ -2,6 +2,8 @@ use async_trait::async_trait;
 use image::{DynamicImage, GenericImageView, ImageFormat, imageops::FilterType};
 use uuid::Uuid;
 
+use crate::media::MediaId;
+
 use super::{FileStorageService, MediaRepository, MediaRepositoryError};
 
 const THUMBNAIL_WIDTH: u32 = 300;
@@ -72,7 +74,7 @@ where
         Ok(output)
     }
 
-    fn generate_thumbnail_path(&self, original_path: &str, media_id: Uuid) -> String {
+    fn generate_thumbnail_path(&self, original_path: &str, media_id: MediaId) -> String {
         let path_parts: Vec<&str> = original_path.split('/').collect();
         let dir = &path_parts[..path_parts.len() - 1].join("/");
         format!("{}/thumb_{}.jpg", dir, media_id)
@@ -87,7 +89,7 @@ where
 {
     async fn generate_thumbnail(
         &self,
-        media_id: Uuid,
+        media_id: MediaId,
         original_path: &str,
         image_data: Vec<u8>,
         content_type: &str,
@@ -109,7 +111,9 @@ where
         self.storage_service
             .store_file(thumbnail_data, &thumbnail_path, "image/jpeg")
             .await
-            .map_err(ThumbnailError::StorageError)?;
+            .map_err(|_| {
+                ThumbnailError::StorageError("An error saving the image occurred".to_string())
+            })?;
 
         self.media_repository
             .update_thumbnail_path(media_id, Some(thumbnail_path))

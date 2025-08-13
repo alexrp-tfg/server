@@ -1,6 +1,8 @@
 use async_trait::async_trait;
 use uuid::Uuid;
 
+use crate::media::MediaId;
+
 use super::media_file::{MediaFile, NewMediaFile};
 
 #[derive(Debug, thiserror::Error)]
@@ -19,16 +21,17 @@ pub trait MediaRepository: Send + Sync {
     ) -> Result<MediaFile, MediaRepositoryError>;
     async fn get_media_file_by_id(
         &self,
-        id: Uuid,
+        id: MediaId,
     ) -> Result<Option<MediaFile>, MediaRepositoryError>;
     async fn get_media_files_by_user_id(
         &self,
         user_id: Uuid,
     ) -> Result<Vec<MediaFile>, MediaRepositoryError>;
+    async fn get_media_path_by_id(&self, id: MediaId) -> Result<String, MediaRepositoryError>;
     async fn delete_media_file(&self, id: Uuid) -> Result<(), MediaRepositoryError>;
     async fn update_thumbnail_path(
         &self,
-        id: Uuid,
+        id: MediaId,
         thumbnail_path: Option<String>,
     ) -> Result<(), MediaRepositoryError>;
 }

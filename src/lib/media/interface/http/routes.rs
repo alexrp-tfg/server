@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use axum::{
     Extension, Json,
     body::Body,
@@ -17,6 +19,7 @@ use crate::{
         http_server::AppState,
     },
     media::{
+        GetMediaStreamError, GetMediaStreamQuery,
         application::{
             commands::{
                 delete_media::{
@@ -31,6 +34,7 @@ use crate::{
             },
         },
         domain::{MediaDeleteError, MediaUploadError},
+        get_media_stream_query_handler,
     },
     protected,
     users::domain::Claims,
@@ -258,17 +262,61 @@ pub async fn delete_media(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/stream/{media_id}",
+    description = "Stream media file",
+    tag = "media",
+    responses(
+        (status = 200, description = "Media file streamed correctly", body = [u8]),
+        (status = 400, description = "Invalid media ID format", body = ApiErrorBody),
+        (status = 404, description = "Media file not found", body = ApiErrorBody),
+        (status = 500, description = "Internal server error", body = ApiErrorBody)
+    ),
+)]
+pub async fn get_media_stream(
+    State(state): State<AppState>,
+    Path(media_id): Path<String>,
+) -> Result<Body, ApiError> {
+    let query = GetMediaStreamQuery {
+        media_id: Uuid::from_str(&media_id)
+            .map_err(|_| ApiError::BadRequestError("Invalid media ID format".to_string()))?,
+    };
+
+    let file_stream = get_media_stream_query_handler(
+        query,
+        state.storage_service.as_ref(),
+        state.media_repository.as_ref(),
+    )
+    .await
+    .map_err(|e| match e {
+        GetMediaStreamError::NotFound => {
+            ApiError::NotFoundError("Media file not found".to_string())
+        }
+        GetMediaStreamError::InternalError(error) => {
+            tracing::error!(
+                "Internal server error while streaming media file: {}",
+                error
+            );
+            ApiError::InternalServerError("Internal server error".to_string())
+        }
+    })?;
+
+    Ok(Body::from_stream(file_stream))
+}
+
 pub fn api_routes(state: AppState) -> axum::Router<AppState> {
     axum::Router::new()
         .route("/upload", post(upload_media))
         .route("/", get(get_media_files))
         .route("/{media_id}", delete(delete_media))
         .route_layer(protected!(state.clone()))
+        .route("/stream/{media_path}", get(get_media_stream))
 }
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(upload_media, get_media_files, delete_media),
+    paths(upload_media, get_media_files, delete_media, get_media_stream),
     tags(
         (name = "media", description = "Media upload and management API")
     )

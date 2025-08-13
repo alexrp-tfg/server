@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use lib::{
     media::{
-        ThumbnailError, ThumbnailService,
+        FileStorageError, FileStream, MediaId, ThumbnailError, ThumbnailService,
         domain::{
             FileStorageService, MediaFile, MediaRepository, MediaRepositoryError, NewMediaFile,
         },
@@ -43,7 +43,7 @@ impl MediaRepository for MockMediaRepository {
 
     async fn get_media_file_by_id(
         &self,
-        _id: Uuid,
+        _id: MediaId,
     ) -> Result<Option<MediaFile>, MediaRepositoryError> {
         if self.fail_get {
             return Err(MediaRepositoryError::InternalServerError);
@@ -75,7 +75,7 @@ impl MediaRepository for MockMediaRepository {
 
     async fn update_thumbnail_path(
         &self,
-        id: Uuid,
+        id: MediaId,
         _thumbnail_path: Option<String>,
     ) -> Result<(), MediaRepositoryError> {
         if self.fail_save {
@@ -83,6 +83,16 @@ impl MediaRepository for MockMediaRepository {
         }
         match self.media_files.iter().find(|f| f.id == id) {
             Some(_) => Ok(()),
+            None => Err(MediaRepositoryError::MediaFileNotFound),
+        }
+    }
+
+    async fn get_media_path_by_id(&self, id: MediaId) -> Result<String, MediaRepositoryError> {
+        if self.fail_get {
+            return Err(MediaRepositoryError::InternalServerError);
+        }
+        match self.media_files.iter().find(|f| f.id == id) {
+            Some(file) => Ok(file.file_path.clone()),
             None => Err(MediaRepositoryError::MediaFileNotFound),
         }
     }
@@ -102,22 +112,31 @@ impl FileStorageService for MockStorageService {
         _file_data: Vec<u8>,
         file_path: &str,
         _content_type: &str,
-    ) -> Result<String, String> {
+    ) -> Result<String, FileStorageError> {
         if self.fail_upload {
-            return Err("Mock upload failure".to_string());
+            return Err(FileStorageError::InternalError(
+                "Mock upload failure".to_string(),
+            ));
         }
         Ok(file_path.to_string())
     }
 
-    async fn delete_file(&self, _file_path: &str) -> Result<(), String> {
+    async fn delete_file(&self, _file_path: &str) -> Result<(), FileStorageError> {
         if self.fail_delete {
-            return Err("Mock delete failure".to_string());
+            return Err(FileStorageError::InternalError(
+                "Mock delete failure".to_string(),
+            ));
         }
         Ok(())
     }
 
-    async fn get_file_url(&self, file_path: &str) -> Result<String, String> {
+    async fn get_file_url(&self, file_path: &str) -> Result<String, FileStorageError> {
         Ok(format!("https://mock-storage.example.com/{}", file_path))
+    }
+
+    async fn get_file_stream(&self, _file_path: &str) -> Result<FileStream, FileStorageError> {
+        // Mock implementation returns an empty stream
+        Ok(Box::pin(futures_util::stream::empty()))
     }
 }
 

@@ -154,7 +154,7 @@ async fn test_delete_media_success() {
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("DELETE")
-        .uri(&format!("/media/{}", media_id))
+        .uri(format!("/media/{}", media_id))
         .header("Authorization", "Bearer valid_token")
         .body(Body::empty())
         .unwrap();
@@ -175,7 +175,7 @@ async fn test_delete_media_not_found() {
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("DELETE")
-        .uri(&format!("/media/{}", media_id))
+        .uri(format!("/media/{}", media_id))
         .header("Authorization", "Bearer valid_token")
         .body(Body::empty())
         .unwrap();
@@ -190,7 +190,7 @@ async fn test_delete_media_unauthorized() {
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("DELETE")
-        .uri(&format!("/media/{}", media_id))
+        .uri(format!("/media/{}", media_id))
         .body(Body::empty())
         .unwrap();
     let response = app.oneshot(request).await.unwrap();

@@ -53,7 +53,11 @@ pub async fn upload_media_command_handler<
     storage_service
         .store_file(command.file_data, &file_path, &command.content_type)
         .await
-        .map_err(MediaUploadError::StorageError)?;
+        .map_err(|_| {
+            MediaUploadError::StorageError(
+                "An error occurred while uploading media file".to_string(),
+            )
+        })?;
 
     // Create media file record in database
     let new_media_file = NewMediaFile {

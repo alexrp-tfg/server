@@ -47,7 +47,13 @@ pub async fn delete_media_command_handler<
     storage_service
         .delete_file(&media_file.file_path)
         .await
-        .map_err(MediaDeleteError::StorageError)?;
+        .map_err(|e| match e {
+            crate::media::FileStorageError::NotFound => MediaDeleteError::MediaFileNotFound,
+            error => {
+                tracing::error!("Failed to delete file from storage: {:?}", error);
+                MediaDeleteError::StorageError("Storage error".to_string())
+            }
+        })?;
 
     // Delete media file record from database
     media_repository

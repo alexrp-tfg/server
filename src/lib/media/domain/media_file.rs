@@ -1,8 +1,10 @@
 use uuid::Uuid;
 
+pub type MediaId = Uuid;
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct MediaFile {
-    pub id: Uuid,
+    pub id: MediaId,
     pub user_id: Uuid,
     pub filename: String,
     pub original_filename: String,
