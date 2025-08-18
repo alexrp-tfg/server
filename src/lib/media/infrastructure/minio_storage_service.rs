@@ -1,47 +1,70 @@
 use async_trait::async_trait;
-use futures_util::StreamExt;
-use minio::s3::{creds::StaticProvider, error::ErrorCode, http::BaseUrl, types::S3Api};
+use aws_sdk_s3::config::{RequestChecksumCalculation, ResponseChecksumValidation};
+use aws_sdk_s3::error::DisplayErrorContext;
+use http_body::Frame;
+use http_body_util::StreamBody;
+use std::pin::Pin;
+use bytes::Bytes;
+use futures_core::Stream;
+use futures_util::{StreamExt, TryStreamExt};
+use aws_sdk_s3::{Client, Error as S3Error};
+use aws_sdk_s3::primitives::{ByteStream, SdkBody};
+use aws_config::{BehaviorVersion, Region};
+use tokio_util::io::ReaderStream;
 
-use crate::media::{FileStorageError, FileStorageService, FileStream};
+use crate::media::domain::file_storage_service::{
+    FileStorageService, FileStorageError, UploadedFileMetadata, FileStream
+};
 
 pub struct MinioStorageService {
-    client: minio::s3::Client,
+    client: Client,
     bucket: String,
+    endpoint: String,
 }
 
 impl MinioStorageService {
     pub async fn new(
-        endpoint: String,
-        access_key: String,
-        secret_key: String,
-        bucket_name: String,
-    ) -> Result<Self, String> {
-        let base_url: BaseUrl = endpoint
-            .parse()
-            .map_err(|e| format!("Invalid endpoint URL: {}", e))?;
-        let static_provider = StaticProvider::new(&access_key, &secret_key, None);
+        endpoint: &str,
+        access_key: &str,
+        secret_key: &str,
+        bucket: &str,
+    ) -> Result<Self, S3Error> {
+        // Configure AWS SDK to work with MinIO
+        let config = aws_config::defaults(BehaviorVersion::latest())
+            .endpoint_url(endpoint)
+            .region(Region::new("us-east-1")) // MinIO uses this as default
+            .credentials_provider(aws_sdk_s3::config::Credentials::new(
+                access_key,
+                secret_key,
+                None,
+                None,
+                "static"
+            ))
+            .load()
+            .await;
 
-        let client = minio::s3::Client::new(base_url, Some(Box::new(static_provider)), None, None)
-            .map_err(|e| format!("Failed to create MinIO client: {}", e))?;
+        let s3_config = aws_sdk_s3::config::Builder::from(&config)
+            .force_path_style(true) // Required for MinIO
+            .request_checksum_calculation(RequestChecksumCalculation::WhenRequired)
+            .response_checksum_validation(ResponseChecksumValidation::WhenRequired)
+            .build();
 
-        // Ensure the bucket exists, create it if it doesn't
-        if !client
-            .bucket_exists(&bucket_name)
-            .send()
-            .await
-            .map_err(|e| format!("Failed to check bucket existence: {}", e))?
-            .exists
-        {
-            client
-                .create_bucket(&bucket_name)
-                .send()
-                .await
-                .map_err(|e| format!("Failed to create bucket: {}", e))?;
+
+        let client = Client::from_conf(s3_config);
+
+        // Check if bucket exists and create if necessary
+        match client.head_bucket().bucket(bucket).send().await {
+            Ok(_) => {}, // Bucket exists
+            Err(_) => {
+                // Try to create bucket
+                let _ = client.create_bucket().bucket(bucket).send().await;
+            }
         }
 
         Ok(Self {
             client,
-            bucket: bucket_name,
+            bucket: bucket.to_string(),
+            endpoint: endpoint.to_string(),
         })
     }
 }
@@ -50,74 +73,90 @@ impl MinioStorageService {
 impl FileStorageService for MinioStorageService {
     async fn store_file(
         &self,
-        file_data: Vec<u8>,
         file_path: &str,
         content_type: &str,
-    ) -> Result<String, FileStorageError> {
-        Ok(self
-            .client
-            .put_object_content(&self.bucket, file_path, file_data)
-            .content_type(content_type.to_string())
-            .send()
-            .await
-            .map_err(|e| FileStorageError::InternalError(format!("Failed to store file: {}", e)))?
-            .object)
+        file_size: Option<u64>,
+        file_data: Pin<Box<dyn Stream<Item = Result<Bytes, std::io::Error>> + Send + Sync + 'static>>,
+    ) -> Result<UploadedFileMetadata, FileStorageError> {
+        let frames = file_data.map_ok(Frame::data);
+
+        let body = StreamBody::new(frames);
+
+        let bytestream = ByteStream::new(SdkBody::from_body_1_x(body));
+
+        let mut put_request = self.client
+            .put_object()
+            .bucket(&self.bucket)
+            .key(file_path)
+            .body(bytestream)
+            .content_type(content_type);
+
+        // Set content length if known
+        if let Some(size) = file_size {
+            put_request = put_request.content_length(size as i64);
+        }
+
+        put_request.send().await.map_err(|e| {
+            FileStorageError::InternalError(format!(
+                "Failed to upload file: {}",
+                DisplayErrorContext(e)
+            ))
+        })?;
+
+        Ok(UploadedFileMetadata {
+            file_path: file_path.to_string(),
+            file_size: file_size.unwrap_or(0),
+        })
     }
 
     async fn delete_file(&self, file_path: &str) -> Result<(), FileStorageError> {
         self.client
-            .delete_object(&self.bucket, file_path)
+            .delete_object()
+            .bucket(&self.bucket)
+            .key(file_path)
             .send()
             .await
-            .map_err(|e| {
-                FileStorageError::InternalError(format!("Failed to delete file: {}", e))
-            })?;
+            .map_err(|e| FileStorageError::InternalError(format!("Failed to delete file: {}", e)))?;
 
         Ok(())
     }
 
     async fn get_file_url(&self, file_path: &str) -> Result<String, FileStorageError> {
-        // For MinIO, we can construct the URL directly
-        Ok(format!(
-            "{}/{}/{}",
-            "https://your-minio-endpoint", // Store this in the struct for real use
-            self.bucket,
-            file_path
-        ))
+        // For MinIO, construct the URL directly since it's accessible via HTTP
+        let url = format!("{}/{}/{}", self.endpoint, self.bucket, file_path);
+        Ok(url)
     }
 
     async fn get_file_stream(&self, file_path: &str) -> Result<FileStream, FileStorageError> {
-        let response = self
-            .client
-            .get_object("media-files", file_path)
+        let response = self.client
+            .get_object()
+            .bucket(&self.bucket)
+            .key(file_path)
             .send()
-            .await
-            .map_err(|e| match e {
-                minio::s3::error::Error::S3Error(error) => {
-                    if error.code == ErrorCode::NoSuchKey {
-                        FileStorageError::NotFound
-                    } else {
-                        FileStorageError::InternalError(format!("S3 error: {}", error.message))
+            .await;
+
+        match response {
+            Ok(output) => {
+                // Convert ByteStream to a proper Stream that returns Result<Bytes, FileStorageError>
+                let async_read = output.body.into_async_read();
+                let reader_stream = ReaderStream::new(async_read);
+                
+                let stream = reader_stream.map(|result| {
+                    match result {
+                        Ok(bytes) => Ok(bytes),
+                        Err(e) => Err(FileStorageError::InternalError(format!("Stream error: {}", e))),
                     }
+                });
+                
+                Ok(Box::pin(stream))
+            }
+            Err(err) => {
+                if err.to_string().contains("NoSuchKey") || err.to_string().contains("404") {
+                    Err(FileStorageError::NotFound)
+                } else {
+                    Err(FileStorageError::InternalError(format!("Failed to get file stream: {}", err)))
                 }
-                error => {
-                    FileStorageError::InternalError(format!("Failed to get file stream: {}", error))
-                }
-            })?;
-
-        let stream = response
-            .content
-            .to_stream()
-            .await
-            .map_err(|e| {
-                FileStorageError::InternalError(format!("Failed to get file stream: {}", e))
-            })?
-            .0;
-
-        let mapped_stream = stream.map(|item| {
-            item.map_err(|e| FileStorageError::InternalError(format!("Stream error: {}", e)))
-        });
-
-        Ok(Box::pin(mapped_stream))
+            }
+        }
     }
 }

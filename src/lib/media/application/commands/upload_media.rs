@@ -1,4 +1,8 @@
-use serde::{Deserialize, Serialize};
+use std::pin::Pin;
+
+use bytes::Bytes;
+use futures_core::Stream;
+use serde::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -7,13 +11,13 @@ use crate::media::domain::{
     NewMediaFile,
 };
 
-#[derive(Debug, Deserialize, ToSchema)]
 pub struct UploadMediaCommand {
     pub user_id: Uuid,
     pub filename: String,
     pub original_filename: String,
-    pub file_data: Vec<u8>,
+    pub file_size: Option<u64>,
     pub content_type: String,
+    pub file_data: Pin<Box<dyn Stream<Item = Result<Bytes, std::io::Error>> + Send + Sync>>,
 }
 
 #[derive(Debug, Serialize, ToSchema, Clone, PartialEq, Eq)]
@@ -30,9 +34,9 @@ pub async fn upload_media_command_handler<
     MR: MediaRepository + ?Sized,
     FS: FileStorageService + ?Sized,
 >(
-    command: UploadMediaCommand,
     media_repository: &MR,
     storage_service: &FS,
+    command: UploadMediaCommand,
 ) -> Result<UploadMediaResult, MediaUploadError> {
     // Validate file type (only allow images and videos)
     if !is_valid_media_type(&command.content_type) {
@@ -40,22 +44,22 @@ pub async fn upload_media_command_handler<
     }
 
     // Check file size (max 100MB)
-    const MAX_FILE_SIZE: usize = 100 * 1024 * 1024;
-    if command.file_data.len() > MAX_FILE_SIZE {
-        return Err(MediaUploadError::FileTooLarge);
-    }
+    //const MAX_FILE_SIZE: usize = 100 * 1024 * 1024;
+    //if command.file_data.len() > MAX_FILE_SIZE {
+    //    return Err(MediaUploadError::FileTooLarge);
+    //}
 
     // Generate unique file path
     let file_path = format!("media/{}/{}", command.user_id, command.filename);
-    let file_size = command.file_data.len() as i64;
+    //let file_size = command.file_data.len() as i64;
 
     // Store file in MinIO
-    storage_service
-        .store_file(command.file_data, &file_path, &command.content_type)
+    let upload_result = storage_service
+        .store_file(&file_path, &command.content_type, command.file_size, command.file_data)
         .await
-        .map_err(|_| {
+        .map_err(|e| {
             MediaUploadError::StorageError(
-                "An error occurred while uploading media file".to_string(),
+                format!("An error occurred while uploading media file: {}", e),
             )
         })?;
 
@@ -64,7 +68,7 @@ pub async fn upload_media_command_handler<
         user_id: command.user_id,
         filename: command.filename,
         original_filename: command.original_filename,
-        file_size,
+        file_size: upload_result.file_size as i64,
         content_type: command.content_type,
         file_path,
         thumbnail_path: None,

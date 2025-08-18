@@ -126,10 +126,10 @@ async fn create_storage_service() -> anyhow::Result<MinioStorageService> {
     let minio_bucket = std::env::var("MINIO_BUCKET").unwrap_or_else(|_| "media-files".to_string());
 
     MinioStorageService::new(
-        minio_endpoint,
-        minio_access_key,
-        minio_secret_key,
-        minio_bucket,
+        &minio_endpoint,
+        &minio_access_key,
+        &minio_secret_key,
+        &minio_bucket,
     )
     .await
     .map_err(|e| anyhow::anyhow!("Failed to create storage service: {}", e))

@@ -3,12 +3,17 @@ use std::str::FromStr;
 use axum::{
     Extension, Json,
     body::Body,
-    extract::{FromRequest, Multipart, Path, Request, State},
+    extract::{Path, Request, State},
     http::StatusCode,
     routing::{delete, get, post},
 };
+use bytes::Bytes;
+use futures_util::{StreamExt, TryStreamExt};
+use multer::Multipart;
+use serde;
 use utoipa::OpenApi;
 use uuid::Uuid;
+use validator::Validate;
 
 use crate::{
     api::{
@@ -17,28 +22,33 @@ use crate::{
             response_body::ApiResponseBody,
         },
         http_server::AppState,
-    },
-    media::{
-        GetMediaStreamError, GetMediaStreamQuery,
+    }, media::{
         application::{
             commands::{
                 delete_media::{
-                    DeleteMediaCommand, DeleteMediaResult, delete_media_command_handler,
+                    delete_media_command_handler, DeleteMediaCommand, DeleteMediaResult
                 },
                 upload_media::{
-                    UploadMediaCommand, UploadMediaResult, upload_media_command_handler,
+                    upload_media_command_handler, UploadMediaCommand, UploadMediaResult
                 },
             },
             queries::get_media_files::{
-                GetMediaFilesQuery, GetMediaFilesResult, get_media_files_query_handler,
+                get_media_files_query_handler, GetMediaFilesQuery, GetMediaFilesResult
             },
-        },
-        domain::{MediaDeleteError, MediaUploadError},
-        get_media_stream_query_handler,
-    },
-    protected,
-    users::domain::Claims,
+        }, domain::{MediaDeleteError, MediaUploadError}, get_media_stream_query_handler, GetMediaStreamError, GetMediaStreamQuery
+    }, protected, users::domain::Claims
 };
+
+#[derive(Validate, serde::Deserialize, utoipa::ToSchema)]
+pub struct RequestUploadRequestBody {
+    #[validate(length(min = 1, message = "Filename cannot be empty"))]
+    filename: String,
+    #[validate(range(min = 1, message = "File size must be greater than 0"))]
+    file_size: u64,
+    #[validate(length(min = 1, message = "Content type cannot be empty"))]
+    content_type: String,
+}
+
 
 #[derive(serde::Deserialize, utoipa::ToSchema)]
 #[allow(unused)]
@@ -67,47 +77,93 @@ pub async fn upload_media(
     Extension(claims): Extension<Claims>,
     req: Request<Body>,
 ) -> Result<(StatusCode, Json<ApiResponseBody<UploadMediaResult>>), ApiError> {
-    let mut multipart = Multipart::from_request(req, &state)
-        .await
-        .map_err(|_| ApiError::BadRequestError("Invalid multipart data".to_string()))?;
+    // Get content type for boundary detection
+    let content_type = req
+        .headers()
+        .get("content-type")
+        .and_then(|ct| ct.to_str().ok())
+        .ok_or_else(|| ApiError::BadRequestError("Missing content-type header".to_string()))?;
 
-    let mut file_data: Option<Vec<u8>> = None;
+    let file_size = req
+        .headers()
+        .get("x-file-size")
+        .and_then(|cl| cl.to_str().ok())
+        .and_then(|cl| cl.parse::<u64>().ok())
+        .ok_or_else(|| ApiError::BadRequestError("Missing or invalid x-file-size header".to_string()))?;
+
+    // Extract boundary from content-type
+    let boundary = multer::parse_boundary(content_type)
+        .map_err(|_| ApiError::BadRequestError("Invalid multipart boundary".to_string()))?;
+
+    // Convert axum body to stream with larger buffer sizes for better performance
+    let body_stream = req.into_body().into_data_stream();
+    
+    // Use chunks_timeout to batch smaller reads into larger chunks
+    // This reduces the overhead of many small HTTP requests
+    let buffered_stream = body_stream
+        .map(|result| {
+            result.map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, err))
+        })
+        .chunks(256); // Group chunks together to reduce overhead
+    
+    // Flatten the buffered chunks back into a byte stream
+    let stream = buffered_stream.map(|chunk_batch| {
+        // Combine all successful chunks, return first error if any
+        let mut combined_data = Vec::new();
+        let mut first_error = None;
+        
+        for chunk_result in chunk_batch {
+            match chunk_result {
+                Ok(bytes) => combined_data.extend_from_slice(&bytes),
+                Err(e) => {
+                    if first_error.is_none() {
+                        first_error = Some(e);
+                    }
+                }
+            }
+        }
+        
+        if let Some(error) = first_error {
+            Err(error)
+        } else {
+            Ok(Bytes::from(combined_data))
+        }
+    });
+
+    // Create multer multipart
+    let mut multipart = Multipart::new(stream, boundary);
+
+    // Store field data outside the loop
+    let mut file_field: Option<multer::Field> = None;
     let mut filename: Option<String> = None;
-    let mut content_type: Option<String> = None;
+    let mut field_content_type: Option<String> = None;
 
-    while let Some(field) = multipart
-        .next_field()
-        .await
-        .map_err(|_| ApiError::BadRequestError("Invalid multipart data".to_string()))?
+    // Process multipart fields
+    while let Some(field) = multipart.next_field().await
+        .map_err(|_| ApiError::BadRequestError("Invalid multipart data".to_string()))? 
     {
-        let field_name = field.name().unwrap_or("").to_string();
-
-        if field_name == "file" {
-            filename = field.file_name().map(|name| name.to_string());
-            content_type = field.content_type().map(|ct| ct.to_string());
-            file_data = Some(
-                field
-                    .bytes()
-                    .await
-                    .map_err(|e| {
-                        ApiError::BadRequestError(format!("Failed to read file data: {}", e))
-                    })?
-                    .to_vec(),
-            );
+        if let Some(field_name) = field.name() {
+            if field_name == "file" {
+                filename = field.file_name().map(|name| name.to_string());
+                field_content_type = field.content_type().map(|ct| ct.to_string());
+                file_field = Some(field);
+                break; // Exit loop once we find the file field
+            }
         }
     }
 
-    let file_data =
-        file_data.ok_or_else(|| ApiError::BadRequestError("No file provided".to_string()))?;
+    // Extract the stored field data
+    let file_field = file_field
+        .ok_or_else(|| ApiError::BadRequestError("No file provided".to_string()))?;
 
-    let original_filename =
-        filename.ok_or_else(|| ApiError::BadRequestError("No filename provided".to_string()))?;
+    let filename = filename
+        .ok_or_else(|| ApiError::BadRequestError("No filename provided".to_string()))?;
 
-    let content_type = content_type
+    let content_type = field_content_type
         .ok_or_else(|| ApiError::BadRequestError("No content type provided".to_string()))?;
 
     // Generate unique filename
-    let file_extension = original_filename
+    let file_extension = filename
         .split('.')
         .next_back()
         .unwrap_or("unknown");
@@ -118,18 +174,29 @@ pub async fn upload_media(
         file_extension
     );
 
+    // Create stream from field
+    let file_stream = file_field.map(|chunk_result| {
+        chunk_result.map_err(|e| std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("Failed to read file data: {}", e),
+        ))
+    });
+
+    let boxed_file_data = Box::pin(file_stream);
+
     let command = UploadMediaCommand {
         user_id: claims.sub,
         filename: unique_filename.clone(),
-        original_filename,
-        file_data: file_data.clone(),
+        file_size: Some(file_size),
+        original_filename: filename,
+        file_data: boxed_file_data,
         content_type: content_type.clone(),
     };
 
     match upload_media_command_handler(
-        command,
         state.media_repository.as_ref(),
         state.storage_service.as_ref(),
+        command,
     )
     .await
     {
@@ -137,15 +204,41 @@ pub async fn upload_media(
             let media_id = result.id;
             let file_path = format!("media/{}/{}", claims.sub, unique_filename);
             let thumbnail_service = state.thumbnail_service.clone();
+            let storage_service = state.storage_service.clone();
 
             tokio::spawn(async move {
                 tracing::info!("Generating thumbnail for media {}", media_id);
-                if let Err(e) = thumbnail_service
-                    .generate_thumbnail(media_id, &file_path, file_data, &content_type)
-                    .await
-                {
-                    tracing::warn!("Failed to generate thumbnail for media {}: {}", media_id, e);
-                }
+                match storage_service.get_file_stream(&file_path).await {
+                    Ok(file_stream) => match file_stream.try_collect::<Vec<Bytes>>().await {
+                        Ok(chunks) => {
+                            let bytes = chunks.into_iter().flat_map(|b| b.to_vec()).collect();
+                            if let Err(e) = thumbnail_service
+                                .generate_thumbnail(media_id, &file_path, bytes, &content_type)
+                                .await
+                            {
+                                tracing::warn!(
+                                    "Failed to generate thumbnail for media {}: {}",
+                                    media_id,
+                                    e
+                                );
+                            }
+                        }
+                        Err(e) => {
+                            tracing::error!(
+                                "Failed to read file stream for media {} when generating thumbnail: {}",
+                                media_id,
+                                e
+                            );
+                        }
+                    },
+                    Err(e) => {
+                        tracing::error!(
+                            "Failed to get file stream for media {} when generating thumbnail: {}",
+                            media_id,
+                            e
+                        );
+                    }
+                };
             });
 
             Ok((StatusCode::CREATED, ApiResponseBody::new(result).into()))
@@ -174,6 +267,8 @@ pub async fn upload_media(
         },
     }
 }
+
+
 
 #[utoipa::path(
     get,

@@ -1,5 +1,8 @@
+use std::io::Cursor;
+
 use async_trait::async_trait;
 use image::{DynamicImage, GenericImageView, ImageFormat, imageops::FilterType};
+use tokio_util::io::ReaderStream;
 use uuid::Uuid;
 
 use crate::media::MediaId;
@@ -108,8 +111,10 @@ where
 
         let thumbnail_path = self.generate_thumbnail_path(original_path, media_id);
 
+        let thumbnail_stream = Box::pin(ReaderStream::new(Cursor::new(thumbnail_data)));
+
         self.storage_service
-            .store_file(thumbnail_data, &thumbnail_path, "image/jpeg")
+            .store_file(&thumbnail_path, "image/jpeg", Some(image_data.len() as u64), thumbnail_stream)
             .await
             .map_err(|_| {
                 ThumbnailError::StorageError("An error saving the image occurred".to_string())
