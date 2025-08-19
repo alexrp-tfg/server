@@ -6,6 +6,7 @@ use tower_http::{
     cors::{Any, CorsLayer},
     trace::TraceLayer,
 };
+use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 use utoipa_swagger_ui::SwaggerUi;
 
 use crate::{
@@ -48,7 +49,12 @@ impl HttpServer {
         };
 
         // Initialize tracing for the application
-        tracing_subscriber::fmt::init();
+        tracing_subscriber::registry()
+            .with(fmt::layer())
+            .with(EnvFilter::new(
+                "tower_http=debug,aws_sdk_s3=warn,aws_smithy_runtime=warn,hyper_util=warn,info",
+            ))
+            .init();
 
         // CORS configuration
         let cors = CorsLayer::new()

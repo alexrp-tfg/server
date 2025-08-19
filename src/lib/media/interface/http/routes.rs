@@ -96,42 +96,14 @@ pub async fn upload_media(
         .map_err(|_| ApiError::BadRequestError("Invalid multipart boundary".to_string()))?;
 
     // Convert axum body to stream with larger buffer sizes for better performance
-    let body_stream = req.into_body().into_data_stream();
-    
-    // Use chunks_timeout to batch smaller reads into larger chunks
-    // This reduces the overhead of many small HTTP requests
-    let buffered_stream = body_stream
+    let body_stream = req.into_body().into_data_stream()
         .map(|result| {
             result.map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, err))
-        })
-        .chunks(256); // Group chunks together to reduce overhead
+        });
     
-    // Flatten the buffered chunks back into a byte stream
-    let stream = buffered_stream.map(|chunk_batch| {
-        // Combine all successful chunks, return first error if any
-        let mut combined_data = Vec::new();
-        let mut first_error = None;
-        
-        for chunk_result in chunk_batch {
-            match chunk_result {
-                Ok(bytes) => combined_data.extend_from_slice(&bytes),
-                Err(e) => {
-                    if first_error.is_none() {
-                        first_error = Some(e);
-                    }
-                }
-            }
-        }
-        
-        if let Some(error) = first_error {
-            Err(error)
-        } else {
-            Ok(Bytes::from(combined_data))
-        }
-    });
 
     // Create multer multipart
-    let mut multipart = Multipart::new(stream, boundary);
+    let mut multipart = Multipart::new(body_stream, boundary);
 
     // Store field data outside the loop
     let mut file_field: Option<multer::Field> = None;
@@ -211,9 +183,13 @@ pub async fn upload_media(
                 match storage_service.get_file_stream(&file_path).await {
                     Ok(file_stream) => match file_stream.try_collect::<Vec<Bytes>>().await {
                         Ok(chunks) => {
-                            let bytes = chunks.into_iter().flat_map(|b| b.to_vec()).collect();
+                            let total_len = chunks.iter().map(|b| b.len()).sum::<usize>();
+                            let mut image_data = Vec::with_capacity(total_len);
+                            for chunk in chunks {
+                                image_data.extend_from_slice(&chunk);
+                            }
                             if let Err(e) = thumbnail_service
-                                .generate_thumbnail(media_id, &file_path, bytes, &content_type)
+                                .generate_thumbnail(media_id, &file_path, image_data, &content_type)
                                 .await
                             {
                                 tracing::warn!(
