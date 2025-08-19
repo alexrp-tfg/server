@@ -114,7 +114,12 @@ where
         let thumbnail_stream = Box::pin(ReaderStream::new(Cursor::new(thumbnail_data)));
 
         self.storage_service
-            .store_file(&thumbnail_path, "image/jpeg", Some(image_data.len() as u64), thumbnail_stream)
+            .store_file(
+                &thumbnail_path,
+                "image/jpeg",
+                Some(image_data.len() as u64),
+                thumbnail_stream,
+            )
             .await
             .map_err(|_| {
                 ThumbnailError::StorageError("An error saving the image occurred".to_string())

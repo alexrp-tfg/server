@@ -8,10 +8,10 @@ use aws_sdk_s3::{Client, Error as S3Error};
 use bytes::Bytes;
 use futures_core::Stream;
 use futures_util::StreamExt;
-use tokio::task::JoinSet;
 use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
+use tokio::task::JoinSet;
 use tokio_util::io::ReaderStream;
 
 use crate::media::domain::file_storage_service::{
@@ -113,7 +113,7 @@ impl FileStorageService for MinioStorageService {
         &self,
         file_path: &str,
         content_type: &str,
-        _file_size: Option<u64>, // file_size is unused, can be removed if not needed elsewhere
+        file_size: Option<u64>, // file_size is unused, can be removed if not needed elsewhere
         mut file_data: Pin<
             Box<dyn Stream<Item = Result<Bytes, std::io::Error>> + Send + Sync + 'static>,
         >,
@@ -154,7 +154,12 @@ impl FileStorageService for MinioStorageService {
             total_size += chunk.len() as u64;
 
             if current_chunk.len() as u64 >= CHUNK_SIZE {
-                let permit = self.concurrent_upload_semaphore.clone().acquire_owned().await.unwrap();
+                let permit = self
+                    .concurrent_upload_semaphore
+                    .clone()
+                    .acquire_owned()
+                    .await
+                    .unwrap();
                 let client = self.client.clone();
                 let bucket = self.bucket.clone();
                 let key = file_path.to_string();
@@ -196,12 +201,17 @@ impl FileStorageService for MinioStorageService {
 
         // 4. Handle the final chunk (if any)
         if !current_chunk.is_empty() {
-            let permit = self.concurrent_upload_semaphore.clone().acquire_owned().await.unwrap();
+            let permit = self
+                .concurrent_upload_semaphore
+                .clone()
+                .acquire_owned()
+                .await
+                .unwrap();
             let client = self.client.clone();
             let bucket = self.bucket.clone();
             let key = file_path.to_string();
             let upload_id_clone = upload_id.to_string();
-            
+
             upload_tasks.spawn(async move {
                 let _permit = permit;
                 let upload_result = client
@@ -230,7 +240,9 @@ impl FileStorageService for MinioStorageService {
 
         // 5. Collect results from all tasks
         while let Some(join_result) = upload_tasks.join_next().await {
-            let part_result = join_result.map_err(|e| FileStorageError::InternalError(format!("Upload task panicked: {}", e)))?;
+            let part_result = join_result.map_err(|e| {
+                FileStorageError::InternalError(format!("Upload task panicked: {}", e))
+            })?;
             completed_parts.push(part_result?);
         }
 

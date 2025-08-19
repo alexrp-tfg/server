@@ -22,21 +22,27 @@ use crate::{
             response_body::ApiResponseBody,
         },
         http_server::AppState,
-    }, media::{
+    },
+    media::{
+        GetMediaStreamError, GetMediaStreamQuery,
         application::{
             commands::{
                 delete_media::{
-                    delete_media_command_handler, DeleteMediaCommand, DeleteMediaResult
+                    DeleteMediaCommand, DeleteMediaResult, delete_media_command_handler,
                 },
                 upload_media::{
-                    upload_media_command_handler, UploadMediaCommand, UploadMediaResult
+                    UploadMediaCommand, UploadMediaResult, upload_media_command_handler,
                 },
             },
             queries::get_media_files::{
-                get_media_files_query_handler, GetMediaFilesQuery, GetMediaFilesResult
+                GetMediaFilesQuery, GetMediaFilesResult, get_media_files_query_handler,
             },
-        }, domain::{MediaDeleteError, MediaUploadError}, get_media_stream_query_handler, GetMediaStreamError, GetMediaStreamQuery
-    }, protected, users::domain::Claims
+        },
+        domain::{MediaDeleteError, MediaUploadError},
+        get_media_stream_query_handler,
+    },
+    protected,
+    users::domain::Claims,
 };
 
 #[derive(Validate, serde::Deserialize, utoipa::ToSchema)]
@@ -48,7 +54,6 @@ pub struct RequestUploadRequestBody {
     #[validate(length(min = 1, message = "Content type cannot be empty"))]
     content_type: String,
 }
-
 
 #[derive(serde::Deserialize, utoipa::ToSchema)]
 #[allow(unused)]
@@ -89,18 +94,19 @@ pub async fn upload_media(
         .get("x-file-size")
         .and_then(|cl| cl.to_str().ok())
         .and_then(|cl| cl.parse::<u64>().ok())
-        .ok_or_else(|| ApiError::BadRequestError("Missing or invalid x-file-size header".to_string()))?;
+        .ok_or_else(|| {
+            ApiError::BadRequestError("Missing or invalid x-file-size header".to_string())
+        })?;
 
     // Extract boundary from content-type
     let boundary = multer::parse_boundary(content_type)
         .map_err(|_| ApiError::BadRequestError("Invalid multipart boundary".to_string()))?;
 
     // Convert axum body to stream with larger buffer sizes for better performance
-    let body_stream = req.into_body().into_data_stream()
-        .map(|result| {
-            result.map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, err))
-        });
-    
+    let body_stream = req
+        .into_body()
+        .into_data_stream()
+        .map(|result| result.map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, err)));
 
     // Create multer multipart
     let mut multipart = Multipart::new(body_stream, boundary);
@@ -111,8 +117,10 @@ pub async fn upload_media(
     let mut field_content_type: Option<String> = None;
 
     // Process multipart fields
-    while let Some(field) = multipart.next_field().await
-        .map_err(|_| ApiError::BadRequestError("Invalid multipart data".to_string()))? 
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|_| ApiError::BadRequestError("Invalid multipart data".to_string()))?
     {
         if let Some(field_name) = field.name() {
             if field_name == "file" {
@@ -125,20 +133,17 @@ pub async fn upload_media(
     }
 
     // Extract the stored field data
-    let file_field = file_field
-        .ok_or_else(|| ApiError::BadRequestError("No file provided".to_string()))?;
+    let file_field =
+        file_field.ok_or_else(|| ApiError::BadRequestError("No file provided".to_string()))?;
 
-    let filename = filename
-        .ok_or_else(|| ApiError::BadRequestError("No filename provided".to_string()))?;
+    let filename =
+        filename.ok_or_else(|| ApiError::BadRequestError("No filename provided".to_string()))?;
 
     let content_type = field_content_type
         .ok_or_else(|| ApiError::BadRequestError("No content type provided".to_string()))?;
 
     // Generate unique filename
-    let file_extension = filename
-        .split('.')
-        .next_back()
-        .unwrap_or("unknown");
+    let file_extension = filename.split('.').next_back().unwrap_or("unknown");
     let unique_filename = format!(
         "{}_{}.{}",
         Uuid::new_v4(),
@@ -148,10 +153,12 @@ pub async fn upload_media(
 
     // Create stream from field
     let file_stream = file_field.map(|chunk_result| {
-        chunk_result.map_err(|e| std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("Failed to read file data: {}", e),
-        ))
+        chunk_result.map_err(|e| {
+            std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Failed to read file data: {}", e),
+            )
+        })
     });
 
     let boxed_file_data = Box::pin(file_stream);
@@ -243,8 +250,6 @@ pub async fn upload_media(
         },
     }
 }
-
-
 
 #[utoipa::path(
     get,

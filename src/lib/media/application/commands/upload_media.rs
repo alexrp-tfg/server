@@ -55,12 +55,18 @@ pub async fn upload_media_command_handler<
 
     // Store file in MinIO
     let upload_result = storage_service
-        .store_file(&file_path, &command.content_type, command.file_size, command.file_data)
+        .store_file(
+            &file_path,
+            &command.content_type,
+            command.file_size,
+            command.file_data,
+        )
         .await
         .map_err(|e| {
-            MediaUploadError::StorageError(
-                format!("An error occurred while uploading media file: {}", e),
-            )
+            MediaUploadError::StorageError(format!(
+                "An error occurred while uploading media file: {}",
+                e
+            ))
         })?;
 
     // Create media file record in database

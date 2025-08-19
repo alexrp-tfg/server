@@ -28,7 +28,9 @@ pub trait FileStorageService: Send + Sync {
         file_path: &str,
         content_type: &str,
         file_size: Option<u64>,
-        mut file_data: Pin<Box<dyn Stream<Item = Result<Bytes, std::io::Error>> + Send + Sync + 'static>> ,
+        mut file_data: Pin<
+            Box<dyn Stream<Item = Result<Bytes, std::io::Error>> + Send + Sync + 'static>,
+        >,
     ) -> Result<UploadedFileMetadata, FileStorageError>;
     async fn delete_file(&self, file_path: &str) -> Result<(), FileStorageError>;
     async fn get_file_url(&self, file_path: &str) -> Result<String, FileStorageError>;
