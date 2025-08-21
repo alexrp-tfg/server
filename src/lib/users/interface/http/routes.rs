@@ -73,7 +73,7 @@ pub async fn create_user(
     tag = "auth",
     request_body = LoginCommand,
     responses(
-        (status = 200, description = "User logged in successfully", body = TokenResponseBody),
+        (status = 200, description = "User logged in successfully", body = ApiResponseBody<TokenResponseBody>),
         (status = 400, description = "Invalid credentials", body = ApiErrorBody,
             example = json!({
             "message": "Invalid username or password"
@@ -87,7 +87,7 @@ pub async fn create_user(
 pub async fn login_user(
     State(state): State<AppState>,
     ValidatedJson(body): ValidatedJson<LoginCommand>,
-) -> Result<(StatusCode, Json<TokenResponseBody>), ApiError> {
+) -> Result<(StatusCode, Json<ApiResponseBody<TokenResponseBody>>), ApiError> {
     match login_command_handler(
         body,
         state.user_repository.as_ref(),
@@ -95,7 +95,7 @@ pub async fn login_user(
     )
     .await
     {
-        Ok(result) => Ok((StatusCode::OK, Json(TokenResponseBody::new(result)))),
+        Ok(result) => Ok((StatusCode::OK, Json(ApiResponseBody::new(TokenResponseBody::new(result))))),
         Err(err) => match err {
             UserLoginError::InvalidCredentials => Err(ApiError::BadRequestError(err.to_string())),
             UserLoginError::InternalServerError(msg) => Err(ApiError::InternalServerError(msg)),

@@ -113,7 +113,7 @@ fn establish_connection() -> Pool<ConnectionManager<PgConnection>> {
 
     Pool::builder()
         .build(manager)
-        .unwrap_or_else(|_| panic!("Error creating connection pool for {}", &database_url))
+        .unwrap_or_else(|e| panic!("Error creating connection pool for {}: {}", &database_url, e))
 }
 
 async fn create_storage_service() -> anyhow::Result<MinioStorageService> {

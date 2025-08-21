@@ -76,34 +76,48 @@ impl MinioStorageService {
         })
     }
 
-    async fn upload_part(
+    async fn store_small_file(
         &self,
         file_path: &str,
-        upload_id: &str,
-        part_number: i32,
-        data: Vec<u8>,
-    ) -> Result<CompletedPart, FileStorageError> {
-        let part = self
-            .client
-            .upload_part()
+        content_type: &str,
+        file_data: Pin<
+            Box<dyn Stream<Item = Result<Bytes, std::io::Error>> + Send + Sync + 'static>,
+        >,
+    ) -> Result<UploadedFileMetadata, FileStorageError> {
+        // Collect all chunks into a single buffer
+        let mut buffer = Vec::new();
+        let mut stream = file_data;
+
+        while let Some(chunk_result) = stream.next().await {
+            let chunk = chunk_result.map_err(|e| {
+                FileStorageError::InternalError(format!("Failed to read file data: {}", e))
+            })?;
+            buffer.extend_from_slice(&chunk);
+        }
+
+        let total_size = buffer.len() as u64;
+
+        // Single part upload
+        self.client
+            .put_object()
             .bucket(&self.bucket)
             .key(file_path)
-            .upload_id(upload_id)
-            .part_number(part_number)
-            .body(ByteStream::from(data))
+            .content_type(content_type)
+            .content_length(total_size as i64)
+            .body(ByteStream::from(buffer))
             .send()
             .await
             .map_err(|e| {
                 FileStorageError::InternalError(format!(
-                    "Failed to upload part: {}",
+                    "Failed to upload small file: {}",
                     DisplayErrorContext(e)
                 ))
             })?;
 
-        Ok(CompletedPart::builder()
-            .part_number(part_number)
-            .e_tag(part.e_tag().unwrap_or_default())
-            .build())
+        Ok(UploadedFileMetadata {
+            file_path: file_path.to_string(),
+            file_size: total_size,
+        })
     }
 }
 
@@ -118,6 +132,15 @@ impl FileStorageService for MinioStorageService {
             Box<dyn Stream<Item = Result<Bytes, std::io::Error>> + Send + Sync + 'static>,
         >,
     ) -> Result<UploadedFileMetadata, FileStorageError> {
+        // Check if the file is smaller than the size of a chunk and upload it directly if so
+        if let Some(size) = file_size {
+            if size <= CHUNK_SIZE {
+                return self
+                    .store_small_file(file_path, content_type, file_data)
+                    .await;
+            }
+        }
+
         // 1. Create multipart upload
         let multipart_upload_res = self
             .client
