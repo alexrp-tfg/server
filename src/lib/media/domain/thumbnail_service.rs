@@ -67,10 +67,18 @@ where
 
         let thumbnail = image.resize(THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT, FilterType::Lanczos3);
 
+        // Convert to RGB if needed
+        let rgb_thumbnail = match thumbnail.color() {
+            image::ColorType::Rgba8 | image::ColorType::La8 => {
+                DynamicImage::ImageRgb8(thumbnail.to_rgb8())
+            }
+            _ => thumbnail,
+        };
+
         let mut output = Vec::new();
         let mut cursor = std::io::Cursor::new(&mut output);
 
-        thumbnail
+        rgb_thumbnail
             .write_to(&mut cursor, ImageFormat::Jpeg)
             .map_err(|e| ThumbnailError::ImageProcessingError(e.to_string()))?;
 
