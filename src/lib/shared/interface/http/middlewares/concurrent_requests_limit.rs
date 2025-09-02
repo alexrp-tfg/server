@@ -12,7 +12,10 @@ pub async fn mw_concurrency_semaphore(
         .max_concurrent_requests_semaphore
         .acquire()
         .await
-        .map_err(|_| ApiError::InternalServerError("Internal server error".to_string()).into_response())?;
+        .map_err(|_| { 
+            tracing::error!("Failed to acquire semaphore permit");
+            ApiError::InternalServerError("Internal server error".to_string()).into_response() 
+        })?;
 
     Ok(next.run(req).await)
 }
