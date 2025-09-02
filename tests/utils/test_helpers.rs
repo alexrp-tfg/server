@@ -47,6 +47,7 @@ pub fn create_test_app_state(arguments: CreateTestAppStateArguments) -> AppState
         media_repository: Arc::new(media_repo.unwrap_or_default()),
         storage_service: Arc::new(storage_service.unwrap_or_default()),
         thumbnail_service: Arc::new(thumbnail_service.unwrap_or_default()),
+        max_concurrent_requests_semaphore: Arc::new(tokio::sync::Semaphore::new(100)),
     }
 }
 

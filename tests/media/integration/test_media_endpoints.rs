@@ -69,26 +69,17 @@ async fn test_get_media_files_success() {
         .await
         .unwrap();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    
     assert!(json["data"].is_array());
     assert_eq!(json["data"].as_array().unwrap().len(), 2);
-    assert_eq!(json["data"][0]["filename"], "image1.jpg");
-    assert_eq!(json["data"][1]["filename"], "video1.mp4");
+    assert_eq!(json["data"][0]["original_filename"], "photo1.jpg");
+    assert_eq!(json["data"][1]["original_filename"], "movie1.mp4");
+    assert_eq!(json["data"][0]["content_type"], "image/jpeg");
+    assert_eq!(json["data"][1]["content_type"], "video/mp4");
+    assert_eq!(json["data"][0]["file_size"], 1024);
+    assert_eq!(json["data"][1]["file_size"], 2048);
 
-    // Check if thumbnails are present
-    assert!(json["data"][0]["thumbnail_path"].is_string());
-    assert!(json["data"][1]["thumbnail_path"].is_string());
-    assert!(
-        json["data"][0]["thumbnail_path"]
-            .as_str()
-            .unwrap()
-            .contains("thumb_image1.jpg")
-    );
-    assert!(
-        json["data"][1]["thumbnail_path"]
-            .as_str()
-            .unwrap()
-            .contains("thumb_video1.jpg")
-    );
+
 }
 
 #[tokio::test]

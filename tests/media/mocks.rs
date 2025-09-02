@@ -1,7 +1,10 @@
 use async_trait::async_trait;
+use std::pin::Pin;
+use bytes::Bytes;
+use futures_core::Stream;
 use lib::{
     media::{
-        FileStorageError, FileStream, MediaId, ThumbnailError, ThumbnailService,
+        FileStorageError, FileStream, MediaId, ThumbnailError, ThumbnailService, UploadedFileMetadata,
         domain::{
             FileStorageService, MediaFile, MediaRepository, MediaRepositoryError, NewMediaFile,
         },
@@ -109,16 +112,22 @@ pub struct MockStorageService {
 impl FileStorageService for MockStorageService {
     async fn store_file(
         &self,
-        _file_data: Vec<u8>,
         file_path: &str,
         _content_type: &str,
-    ) -> Result<String, FileStorageError> {
+        _file_size: Option<u64>,
+        mut _file_data: Pin<
+            Box<dyn Stream<Item = Result<Bytes, std::io::Error>> + Send + Sync + 'static>,
+        >,
+    ) -> Result<UploadedFileMetadata, FileStorageError> {
         if self.fail_upload {
             return Err(FileStorageError::InternalError(
                 "Mock upload failure".to_string(),
             ));
         }
-        Ok(file_path.to_string())
+        Ok(UploadedFileMetadata {
+            file_path: file_path.to_string(),
+            file_size: _file_size.unwrap_or(1024),
+        })
     }
 
     async fn delete_file(&self, _file_path: &str) -> Result<(), FileStorageError> {

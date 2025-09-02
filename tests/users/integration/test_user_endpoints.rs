@@ -343,7 +343,8 @@ async fn test_login_success() {
         .await
         .unwrap();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
-    assert!(json.get("token").is_some());
+    
+    assert!(json["data"]["token"].is_string());
 }
 
 #[tokio::test]
