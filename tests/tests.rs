@@ -1,6 +1,4 @@
-pub mod utils {
-    pub mod functions;
-}
+pub mod utils;
 
 // User tests
 mod users {
@@ -11,15 +9,15 @@ mod users {
             mod test_login;
         }
     }
-    
-    // Domain layer tests  
+
+    // Domain layer tests
     pub mod domain {
         mod auth;
         mod roles;
-        mod user_repository;
         mod user;
+        mod user_repository;
     }
-    
+
     // Infrastructure layer tests
     pub mod infrastructure {
         mod test_jwt_token_service;
@@ -29,6 +27,22 @@ mod users {
 
     pub mod integration {
         mod test_user_endpoints;
+    }
+
+    pub mod mocks;
+    pub use mocks::*;
+}
+
+mod media {
+    pub mod application {
+        pub mod commands {
+            mod test_delete_media;
+            mod test_upload_media;
+        }
+    }
+
+    pub mod integration {
+        mod test_media_endpoints;
     }
 
     pub mod mocks;

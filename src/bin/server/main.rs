@@ -6,6 +6,10 @@ use diesel::{
 };
 use lib::{
     api::http_server::HttpServer,
+    media::{
+        domain::ImageThumbnailService,
+        infrastructure::{DieselMediaRepository, MinioStorageService},
+    },
     users::{
         application::create_user::create_user_command_handler,
         infrastructure::{
@@ -40,10 +44,25 @@ async fn main() -> anyhow::Result<()> {
     let connection_pool = Arc::new(establish_connection());
 
     // Services
-    let user_repository = DieselUserRepository::new(connection_pool);
+    let user_repository = DieselUserRepository::new(connection_pool.clone());
     let login_token_service = JwtTokenService::new(JwtTokenConfig::new());
 
-    let server = HttpServer::new(user_repository, login_token_service).await?;
+    // Media services
+    let media_repository = DieselMediaRepository::new((*connection_pool).clone());
+    let storage_service = create_storage_service().await?;
+    let thumbnail_service = ImageThumbnailService::new(
+        DieselMediaRepository::new((*connection_pool).clone()),
+        create_storage_service().await?,
+    );
+
+    let server = HttpServer::new(
+        user_repository,
+        login_token_service,
+        media_repository,
+        storage_service,
+        thumbnail_service,
+    )
+    .await?;
 
     server.run().await
 }
@@ -92,8 +111,26 @@ fn establish_connection() -> Pool<ConnectionManager<PgConnection>> {
 
     let manager = ConnectionManager::<PgConnection>::new(&database_url);
 
-    Pool::builder().build(manager).expect(&format!(
-        "Error creating connection pool for {}",
-        &database_url
-    ))
+    Pool::builder()
+        .build(manager)
+        .unwrap_or_else(|e| panic!("Error creating connection pool for {}: {}", &database_url, e))
+}
+
+async fn create_storage_service() -> anyhow::Result<MinioStorageService> {
+    let minio_endpoint =
+        std::env::var("MINIO_ENDPOINT").unwrap_or_else(|_| "http://localhost:9000".to_string());
+    let minio_access_key =
+        std::env::var("MINIO_ACCESS_KEY").unwrap_or_else(|_| "minioadmin".to_string());
+    let minio_secret_key =
+        std::env::var("MINIO_SECRET_KEY").unwrap_or_else(|_| "minioadmin".to_string());
+    let minio_bucket = std::env::var("MINIO_BUCKET").unwrap_or_else(|_| "media-files".to_string());
+
+    MinioStorageService::new(
+        &minio_endpoint,
+        &minio_access_key,
+        &minio_secret_key,
+        &minio_bucket,
+    )
+    .await
+    .map_err(|e| anyhow::anyhow!("Failed to create storage service: {}", e))
 }

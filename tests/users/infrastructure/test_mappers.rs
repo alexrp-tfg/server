@@ -1,5 +1,8 @@
-use chrono::NaiveDateTime;
-use lib::users::{domain::{Role, User}, infrastructure::{models::RowRole, UserRow}};
+use chrono::DateTime;
+use lib::users::{
+    domain::{Role, User},
+    infrastructure::{UserRow, models::RowRole},
+};
 use uuid::Uuid;
 
 #[test]
@@ -9,10 +12,10 @@ fn test_userrow_to_user_from_impl() {
         username: "alice".to_string(),
         password: "pw".to_string(),
         role: RowRole::User,
-        created_at: Some(NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
-        updated_at: Some(NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
+        created_at: Some(DateTime::from_timestamp(0, 0).unwrap().naive_utc()),
+        updated_at: Some(DateTime::from_timestamp(0, 0).unwrap().naive_utc()),
     };
     let user = User::from(row);
     assert_eq!(user.username, "alice");
     assert_eq!(user.role, Role::User);
-} 
+}

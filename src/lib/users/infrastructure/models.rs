@@ -1,10 +1,13 @@
 use std::io::Write;
 
+use crate::{
+    persistence::domain::schema::{sql_types, users},
+    users::domain::user::NewUser,
+};
 use diesel::prelude::*;
 use serde::Deserialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
-use crate::{persistence::domain::schema::{sql_types, users}, users::domain::user::NewUser};
 
 #[derive(Queryable, AsChangeset, Debug, Selectable)]
 #[diesel(table_name = users)]
@@ -36,8 +39,17 @@ impl From<NewUser> for CreateUserRow {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Deserialize, ToSchema)]
-#[derive(diesel::FromSqlRow, diesel::AsExpression)]
+#[derive(
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Copy,
+    Deserialize,
+    ToSchema,
+    diesel::FromSqlRow,
+    diesel::AsExpression,
+)]
 #[diesel(sql_type = sql_types::Role)]
 pub enum RowRole {
     Admin,
@@ -54,7 +66,10 @@ impl From<crate::users::domain::Role> for RowRole {
 }
 
 impl diesel::serialize::ToSql<sql_types::Role, diesel::pg::Pg> for RowRole {
-    fn to_sql<'b>(&'b self, out: &mut diesel::serialize::Output<'b, '_, diesel::pg::Pg>) -> diesel::serialize::Result {
+    fn to_sql<'b>(
+        &'b self,
+        out: &mut diesel::serialize::Output<'b, '_, diesel::pg::Pg>,
+    ) -> diesel::serialize::Result {
         match *self {
             RowRole::Admin => out.write_all(b"ADMIN")?,
             RowRole::User => out.write_all(b"USER")?,

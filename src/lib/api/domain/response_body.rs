@@ -10,22 +10,20 @@ pub struct ApiResponseBody<T: ToSchema + Serialize + Send> {
 
 impl<T: Serialize + PartialEq + ToSchema + Send> ApiResponseBody<T> {
     pub fn new(data: T) -> Self {
-        Self {
-            data,
-        }
+        Self { data }
     }
 }
 
 #[derive(Debug, ToSchema, Serialize, Clone, PartialEq, Eq)]
 pub struct TokenResponseBody {
-    #[schema(examples("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIyMjkxNjEyMy0wZjU1LTQyZGItYjJlMy02MTI5ZGEzYTQyOGUiLCJ1c2VybmFtZSI6ImFkbWluIiwiZXhwIjoxNzUxOTk4NDA3fQ.QYqF1DDyRHC-1mptYo7CRRT59T0JiBt8239ZB36Uq0U"))]
+    #[schema(examples(
+        "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIyMjkxNjEyMy0wZjU1LTQyZGItYjJlMy02MTI5ZGEzYTQyOGUiLCJ1c2VybmFtZSI6ImFkbWluIiwiZXhwIjoxNzUxOTk4NDA3fQ.QYqF1DDyRHC-1mptYo7CRRT59T0JiBt8239ZB36Uq0U"
+    ))]
     pub token: Token,
 }
 
 impl TokenResponseBody {
     pub fn new(token: Token) -> Self {
-        Self {
-            token
-        }
+        Self { token }
     }
 }

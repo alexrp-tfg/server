@@ -1,6 +1,9 @@
+use std::sync::Arc;
+
 use crate::{
     users::{MockLoginTokenService, MockUserRepository},
     utils::functions::hash_password,
+    utils::test_helpers::*,
 };
 use axum::{
     Router,
@@ -8,32 +11,26 @@ use axum::{
     http::{Request, StatusCode},
 };
 use lib::{
-    api::{http_server::AppState, routes::api_routes},
+    api::routes::api_routes,
     users::domain::{Role, User},
 };
-use std::sync::Arc;
 use tower::util::ServiceExt;
 use uuid::Uuid;
 
-fn test_app(
-    state: AppState<MockUserRepository, MockLoginTokenService>,
-) -> Router<AppState<MockUserRepository, MockLoginTokenService>> {
+fn test_app(state: lib::api::http_server::AppState) -> Router<lib::api::http_server::AppState> {
     api_routes(state)
 }
 
 #[tokio::test]
 async fn test_health_check() {
-    let state = AppState {
-        user_repository: Arc::new(MockUserRepository::default()),
-        login_token_service: Arc::new(MockLoginTokenService::default()),
-    };
+    let state = create_default_test_app_state();
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("GET")
         .uri("/healthz")
         .body(Body::empty())
         .unwrap();
-     let response = app.oneshot(request).await.unwrap();
+    let response = app.oneshot(request).await.unwrap();
     assert_eq!(response.status(), StatusCode::OK);
 }
 
@@ -45,26 +42,36 @@ async fn test_get_user_by_id_success() {
         username: "alice".to_string(),
         password: "hashed_password".to_string(),
         role: lib::users::domain::Role::User,
-        created_at: Some(chrono::NaiveDateTime::from_timestamp_opt(123456789, 0).unwrap()),
-        updated_at: Some(chrono::NaiveDateTime::from_timestamp_opt(987654321, 0).unwrap()),
+        created_at: Some(
+            chrono::DateTime::from_timestamp(123456789, 0)
+                .unwrap()
+                .naive_utc(),
+        ),
+        updated_at: Some(
+            chrono::DateTime::from_timestamp(987654321, 0)
+                .unwrap()
+                .naive_utc(),
+        ),
     };
-    let state = AppState {
-        user_repository: Arc::new(MockUserRepository {
+    let state = create_test_app_state(CreateTestAppStateArguments {
+        user_repo: Some(MockUserRepository {
             user: Some(user.clone()),
             ..MockUserRepository::default()
         }),
-        login_token_service: Arc::new(MockLoginTokenService::default()),
-    };
+        ..CreateTestAppStateArguments::default()
+    });
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("GET")
-        .uri(&format!("/users/{}", user_id))
+        .uri(format!("/user/{}", user_id))
         .header("Authorization", "Bearer valid_token")
         .body(Body::empty())
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
     assert_eq!(response.status(), StatusCode::OK);
-    let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
     assert_eq!(json["data"]["id"], user_id.to_string());
     assert_eq!(json["data"]["username"], "alice");
@@ -73,14 +80,11 @@ async fn test_get_user_by_id_success() {
 #[tokio::test]
 async fn test_get_user_by_id_not_found() {
     let user_id = uuid::Uuid::new_v4();
-    let state = AppState {
-        user_repository: Arc::new(MockUserRepository::default()),
-        login_token_service: Arc::new(MockLoginTokenService::default()),
-    };
+    let state = create_default_test_app_state();
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("GET")
-        .uri(&format!("/users/{}", user_id))
+        .uri(format!("/user/{}", user_id))
         .header("Authorization", "Bearer valid_token")
         .body(Body::empty())
         .unwrap();
@@ -91,14 +95,11 @@ async fn test_get_user_by_id_not_found() {
 #[tokio::test]
 async fn test_get_user_by_id_unauthorized() {
     let user_id = uuid::Uuid::new_v4();
-    let state = AppState {
-        user_repository: Arc::new(MockUserRepository::default()),
-        login_token_service: Arc::new(MockLoginTokenService::default()),
-    };
+    let state = create_default_test_app_state();
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("GET")
-        .uri(&format!("/users/{}", user_id))
+        .uri(format!("/user/{}", user_id))
         .body(Body::empty())
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
@@ -108,17 +109,17 @@ async fn test_get_user_by_id_unauthorized() {
 #[tokio::test]
 async fn test_get_user_by_id_invalid_token() {
     let user_id = uuid::Uuid::new_v4();
-    let state = AppState {
-        user_repository: Arc::new(MockUserRepository::default()),
-        login_token_service: Arc::new(MockLoginTokenService {
+    let state = create_test_app_state(CreateTestAppStateArguments {
+        token_service: Some(Arc::new(MockLoginTokenService {
             validation_fail: true,
             ..MockLoginTokenService::default()
-        }),
-    };
+        })),
+        ..CreateTestAppStateArguments::default()
+    });
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("GET")
-        .uri(&format!("/users/{}", user_id))
+        .uri(format!("/user/{}", user_id))
         .header("Authorization", "Bearer invalid_token")
         .body(Body::empty())
         .unwrap();
@@ -128,14 +129,11 @@ async fn test_get_user_by_id_invalid_token() {
 
 #[tokio::test]
 async fn test_get_user_by_id_malformed_uuid() {
-    let state = AppState {
-        user_repository: Arc::new(MockUserRepository::default()),
-        login_token_service: Arc::new(MockLoginTokenService::default()),
-    };
+    let state = create_default_test_app_state();
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("GET")
-        .uri("/users/not-a-valid-uuid")
+        .uri("/user/not-a-valid-uuid")
         .header("Authorization", "Bearer valid_token")
         .body(Body::empty())
         .unwrap();
@@ -151,35 +149,37 @@ async fn test_get_all_users_success() {
             username: "alice".to_string(),
             password: "hashed1".to_string(),
             role: lib::users::domain::Role::User,
-            created_at: Some(chrono::NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
-            updated_at: Some(chrono::NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
+            created_at: Some(chrono::DateTime::from_timestamp(0, 0).unwrap().naive_utc()),
+            updated_at: Some(chrono::DateTime::from_timestamp(0, 0).unwrap().naive_utc()),
         },
         lib::users::domain::User {
             id: uuid::Uuid::new_v4(),
             username: "bob".to_string(),
             password: "hashed2".to_string(),
             role: lib::users::domain::Role::Admin,
-            created_at: Some(chrono::NaiveDateTime::from_timestamp_opt(1, 0).unwrap()),
-            updated_at: Some(chrono::NaiveDateTime::from_timestamp_opt(1, 0).unwrap()),
+            created_at: Some(chrono::DateTime::from_timestamp(1, 0).unwrap().naive_utc()),
+            updated_at: Some(chrono::DateTime::from_timestamp(1, 0).unwrap().naive_utc()),
         },
     ];
-    let state = AppState {
-        user_repository: Arc::new(MockUserRepository {
+    let state = create_test_app_state(CreateTestAppStateArguments {
+        user_repo: Some(MockUserRepository {
             users_list: users.clone(),
             ..MockUserRepository::default()
         }),
-        login_token_service: Arc::new(MockLoginTokenService::default()),
-    };
+        ..CreateTestAppStateArguments::default()
+    });
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("GET")
-        .uri("/users")
+        .uri("/user")
         .header("Authorization", "Bearer valid_token")
         .body(Body::empty())
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
     assert_eq!(response.status(), StatusCode::OK);
-    let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
     assert!(json["data"].is_array());
     assert_eq!(json["data"].as_array().unwrap().len(), 2);
@@ -189,20 +189,19 @@ async fn test_get_all_users_success() {
 
 #[tokio::test]
 async fn test_get_all_users_empty_list() {
-    let state = AppState {
-        user_repository: Arc::new(MockUserRepository::default()),
-        login_token_service: Arc::new(MockLoginTokenService::default()),
-    };
+    let state = create_default_test_app_state();
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("GET")
-        .uri("/users")
+        .uri("/user")
         .header("Authorization", "Bearer valid_token")
         .body(Body::empty())
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
     assert_eq!(response.status(), StatusCode::OK);
-    let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
     assert!(json["data"].is_array());
     assert_eq!(json["data"].as_array().unwrap().len(), 0);
@@ -210,14 +209,11 @@ async fn test_get_all_users_empty_list() {
 
 #[tokio::test]
 async fn test_get_all_users_unauthorized() {
-    let state = AppState {
-        user_repository: Arc::new(MockUserRepository::default()),
-        login_token_service: Arc::new(MockLoginTokenService::default()),
-    };
+    let state = create_default_test_app_state();
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("GET")
-        .uri("/users")
+        .uri("/user")
         .body(Body::empty())
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
@@ -226,17 +222,17 @@ async fn test_get_all_users_unauthorized() {
 
 #[tokio::test]
 async fn test_get_all_users_invalid_token() {
-    let state = AppState {
-        user_repository: Arc::new(MockUserRepository::default()),
-        login_token_service: Arc::new(MockLoginTokenService {
+    let state = create_test_app_state(CreateTestAppStateArguments {
+        token_service: Some(Arc::new(MockLoginTokenService {
             validation_fail: true,
             ..MockLoginTokenService::default()
-        }),
-    };
+        })),
+        ..CreateTestAppStateArguments::default()
+    });
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("GET")
-        .uri("/users")
+        .uri("/user")
         .header("Authorization", "Bearer invalid_token")
         .body(Body::empty())
         .unwrap();
@@ -246,14 +242,11 @@ async fn test_get_all_users_invalid_token() {
 
 #[tokio::test]
 async fn test_user_registration_success() {
-    let state = AppState {
-        user_repository: Arc::new(MockUserRepository::default()),
-        login_token_service: Arc::new(MockLoginTokenService::default()),
-    };
+    let state = create_default_test_app_state();
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("POST")
-        .uri("/users")
+        .uri("/user")
         .header("content-type", "application/json")
         .header("Authorization", "Bearer valid_token")
         .body(Body::from(
@@ -266,20 +259,20 @@ async fn test_user_registration_success() {
 
 #[tokio::test]
 async fn test_user_registration_duplicate() {
-    let state = AppState {
-        user_repository: Arc::new(MockUserRepository {
+    let state = create_test_app_state(CreateTestAppStateArguments {
+        user_repo: Some(MockUserRepository {
             user_exists: true,
             fail_create: false,
             fail_get: false,
             user: None,
             users_list: vec![],
         }),
-        login_token_service: Arc::new(MockLoginTokenService::default()),
-    };
+        ..CreateTestAppStateArguments::default()
+    });
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("POST")
-        .uri("/users")
+        .uri("/user")
         .header("content-type", "application/json")
         .header("Authorization", "Bearer valid_token")
         .body(Body::from(
@@ -292,20 +285,20 @@ async fn test_user_registration_duplicate() {
 
 #[tokio::test]
 async fn test_user_registration_invalid_payload() {
-    let state = AppState {
-        user_repository: Arc::new(MockUserRepository {
+    let state = create_test_app_state(CreateTestAppStateArguments {
+        user_repo: Some(MockUserRepository {
             user_exists: true,
             fail_create: false,
             fail_get: false,
             user: None,
             users_list: vec![],
         }),
-        login_token_service: Arc::new(MockLoginTokenService::default()),
-    };
+        ..CreateTestAppStateArguments::default()
+    });
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("POST")
-        .uri("/users")
+        .uri("/user")
         .header("content-type", "application/json")
         .header("Authorization", "Bearer valid_token")
         .body(Body::from(r#"{"username": ""}"#)) // missing password
@@ -331,10 +324,10 @@ async fn test_login_success() {
         user: Some(user.clone()),
         users_list: vec![user],
     };
-    let state = AppState {
-        user_repository: Arc::new(user_repository),
-        login_token_service: Arc::new(MockLoginTokenService::default()),
-    };
+    let state = create_test_app_state(CreateTestAppStateArguments {
+        user_repo: Some(user_repository),
+        ..CreateTestAppStateArguments::default()
+    });
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("POST")
@@ -350,15 +343,13 @@ async fn test_login_success() {
         .await
         .unwrap();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
-    assert!(json.get("token").is_some());
+    
+    assert!(json["data"]["token"].is_string());
 }
 
 #[tokio::test]
 async fn test_login_invalid_credentials() {
-    let state = AppState {
-        user_repository: Arc::new(MockUserRepository::default()),
-        login_token_service: Arc::new(MockLoginTokenService::default()),
-    };
+    let state = create_default_test_app_state();
     let app = test_app(state.clone()).with_state(state);
     let request = Request::builder()
         .method("POST")

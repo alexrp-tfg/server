@@ -1,8 +1,8 @@
-use lib::users::{
-    application::commands::create_user::{create_user_command_handler, CreateUserCommand},
-    domain::{UserRepositoryError}
-};
 use crate::users::MockUserRepository;
+use lib::users::{
+    application::commands::create_user::{CreateUserCommand, create_user_command_handler},
+    domain::UserRepositoryError,
+};
 
 #[tokio::test]
 async fn test_create_user_success() {
@@ -37,7 +37,10 @@ async fn test_create_user_already_exists() {
         role: None,
     };
     let result = create_user_command_handler(cmd, &repo).await;
-    assert!(matches!(result, Err(UserRepositoryError::UserAlreadyExists)));
+    assert!(matches!(
+        result,
+        Err(UserRepositoryError::UserAlreadyExists)
+    ));
 }
 
 #[tokio::test]
@@ -54,7 +57,10 @@ async fn test_create_user_repo_error_on_get() {
         role: None,
     };
     let result = create_user_command_handler(cmd, &repo).await;
-    assert!(matches!(result, Err(UserRepositoryError::InternalServerError)));
+    assert!(matches!(
+        result,
+        Err(UserRepositoryError::InternalServerError)
+    ));
 }
 
 #[tokio::test]
@@ -71,5 +77,8 @@ async fn test_create_user_repo_error_on_create() {
         role: None,
     };
     let result = create_user_command_handler(cmd, &repo).await;
-    assert!(matches!(result, Err(UserRepositoryError::InternalServerError)));
+    assert!(matches!(
+        result,
+        Err(UserRepositoryError::InternalServerError)
+    ));
 }

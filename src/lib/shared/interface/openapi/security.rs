@@ -1,4 +1,7 @@
-use utoipa::{openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme}, Modify};
+use utoipa::{
+    Modify,
+    openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
+};
 
 pub struct SecurityAddon;
 
@@ -13,7 +16,9 @@ impl Modify for SecurityAddon {
 
         if let Some(components) = &mut openapi.components {
             // Add security scheme to existing components
-            components.security_schemes.insert("bearer_auth".to_string(), security_scheme);
+            components
+                .security_schemes
+                .insert("bearer_auth".to_string(), security_scheme);
         } else {
             // Create new components with security scheme
             openapi.components = Some(

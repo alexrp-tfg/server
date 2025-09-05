@@ -1,0 +1,148 @@
+use async_trait::async_trait;
+use diesel::prelude::*;
+use diesel::r2d2::{ConnectionManager, Pool};
+use uuid::Uuid;
+
+use super::models::{MediaFileModel, NewMediaFileModel};
+use crate::media::MediaId;
+use crate::media::domain::{MediaFile, MediaRepository, MediaRepositoryError, NewMediaFile};
+
+pub struct DieselMediaRepository {
+    connection_pool: Pool<ConnectionManager<PgConnection>>,
+}
+
+impl DieselMediaRepository {
+    pub fn new(connection_pool: Pool<ConnectionManager<PgConnection>>) -> Self {
+        Self { connection_pool }
+    }
+}
+
+#[async_trait]
+impl MediaRepository for DieselMediaRepository {
+    async fn create_media_file(
+        &self,
+        media_file: NewMediaFile,
+    ) -> Result<MediaFile, MediaRepositoryError> {
+        use crate::schema::media_files::dsl::*;
+
+        let new_media_model: NewMediaFileModel = media_file.into();
+        let mut conn = self
+            .connection_pool
+            .get()
+            .map_err(|_| MediaRepositoryError::InternalServerError)?;
+
+        let created_media = diesel::insert_into(media_files)
+            .values(&new_media_model)
+            .returning(MediaFileModel::as_returning())
+            .get_result(&mut conn)
+            .map_err(|_| MediaRepositoryError::InternalServerError)?;
+
+        Ok(created_media.into())
+    }
+
+    async fn get_media_file_by_id(
+        &self,
+        media_id: MediaId,
+    ) -> Result<Option<MediaFile>, MediaRepositoryError> {
+        use crate::schema::media_files::dsl::*;
+
+        let mut conn = self
+            .connection_pool
+            .get()
+            .map_err(|_| MediaRepositoryError::InternalServerError)?;
+
+        let result = media_files
+            .filter(id.eq(media_id))
+            .select(MediaFileModel::as_select())
+            .first::<MediaFileModel>(&mut conn)
+            .optional()
+            .map_err(|_| MediaRepositoryError::InternalServerError)?;
+
+        Ok(result.map(|model| model.into()))
+    }
+
+    async fn get_media_files_by_user_id(
+        &self,
+        user_uuid: Uuid,
+    ) -> Result<Vec<MediaFile>, MediaRepositoryError> {
+        use crate::schema::media_files::dsl::*;
+
+        let mut conn = self
+            .connection_pool
+            .get()
+            .map_err(|_| MediaRepositoryError::InternalServerError)?;
+
+        let results = media_files
+            .filter(user_id.eq(user_uuid))
+            .order(uploaded_at.desc())
+            .select(MediaFileModel::as_select())
+            .load::<MediaFileModel>(&mut conn)
+            .map_err(|_| MediaRepositoryError::InternalServerError)?;
+
+        Ok(results.into_iter().map(|model| model.into()).collect())
+    }
+
+    async fn delete_media_file(&self, media_id: Uuid) -> Result<(), MediaRepositoryError> {
+        use crate::schema::media_files::dsl::*;
+
+        let mut conn = self
+            .connection_pool
+            .get()
+            .map_err(|_| MediaRepositoryError::InternalServerError)?;
+
+        let deleted_rows = diesel::delete(media_files.filter(id.eq(media_id)))
+            .execute(&mut conn)
+            .map_err(|_| MediaRepositoryError::InternalServerError)?;
+
+        if deleted_rows == 0 {
+            Err(MediaRepositoryError::MediaFileNotFound)
+        } else {
+            Ok(())
+        }
+    }
+
+    async fn update_thumbnail_path(
+        &self,
+        media_id: MediaId,
+        thumbnail_path_value: Option<String>,
+    ) -> Result<(), MediaRepositoryError> {
+        use crate::schema::media_files::dsl::*;
+
+        let mut conn = self
+            .connection_pool
+            .get()
+            .map_err(|_| MediaRepositoryError::InternalServerError)?;
+
+        let updated_rows = diesel::update(media_files.filter(id.eq(media_id)))
+            .set(thumbnail_path.eq(thumbnail_path_value))
+            .execute(&mut conn)
+            .map_err(|_| MediaRepositoryError::InternalServerError)?;
+
+        if updated_rows == 0 {
+            Err(MediaRepositoryError::MediaFileNotFound)
+        } else {
+            Ok(())
+        }
+    }
+
+    async fn get_media_path_by_id(
+        &self,
+        media_id: MediaId,
+    ) -> Result<String, MediaRepositoryError> {
+        use crate::schema::media_files::dsl::*;
+
+        let mut conn = self
+            .connection_pool
+            .get()
+            .map_err(|_| MediaRepositoryError::InternalServerError)?;
+
+        media_files
+            .filter(id.eq(media_id))
+            .select(file_path)
+            .first::<String>(&mut conn)
+            .map_err(|e| match e {
+                diesel::result::Error::NotFound => MediaRepositoryError::MediaFileNotFound,
+                _ => MediaRepositoryError::InternalServerError,
+            })
+    }
+}

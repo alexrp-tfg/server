@@ -20,8 +20,6 @@ pub mod swagger {
     use utoipa::OpenApi;
 
     #[derive(OpenApi)]
-    #[openapi(
-        paths(health_check),
-    )]
+    #[openapi(paths(health_check))]
     pub struct ApiDoc;
 }

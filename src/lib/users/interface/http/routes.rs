@@ -1,4 +1,10 @@
-use axum::{Json, extract::{Path, State}, http::StatusCode, routing::{get, post}};
+use crate::shared::interface::http::mw_require_role;
+use axum::{
+    Json,
+    extract::{Path, State},
+    http::StatusCode,
+    routing::{get, post},
+};
 use utoipa::OpenApi;
 
 use crate::{
@@ -10,21 +16,19 @@ use crate::{
         http_server::AppState,
     },
     protected, require_roles,
-    shared::interface::{http::{mw_require_auth, mw_require_role, ValidatedJson}, openapi::security::SecurityAddon},
+    shared::interface::{http::ValidatedJson, openapi::security::SecurityAddon},
     users::{
         application::{
             commands::create_user::{
-                create_user_command_handler, CreateUserCommand, CreateUserResult
+                CreateUserCommand, CreateUserResult, create_user_command_handler,
             },
+            login::{LoginCommand, login_command_handler},
             queries::{
-                get_all_users::{get_all_users_query_handler, GetAllUsersResult},
-                get_user::{get_user_query_handler, GetUserQuery, GetUserResult},
+                get_all_users::{GetAllUsersResult, get_all_users_query_handler},
+                get_user::{GetUserQuery, GetUserResult, get_user_query_handler},
             },
-            login::{login_command_handler, LoginCommand},
         },
-        domain::{
-            user::UserLoginError, LoginTokenService, Role, UserRepository, UserRepositoryError
-        },
+        domain::{Role, UserRepositoryError, user::UserLoginError},
     },
 };
 
@@ -43,16 +47,20 @@ use crate::{
     ),
     security(("bearer_auth" = [])),
 )]
-pub async fn create_user<UR: UserRepository, TS: LoginTokenService>(
-    State(state): State<AppState<UR, TS>>,
+pub async fn create_user(
+    State(state): State<AppState>,
     ValidatedJson(body): ValidatedJson<CreateUserCommand>,
 ) -> Result<(StatusCode, Json<ApiResponseBody<CreateUserResult>>), ApiError> {
     match create_user_command_handler(body, state.user_repository.as_ref()).await {
         Ok(user) => Ok((StatusCode::CREATED, ApiResponseBody::new(user).into())),
         Err(err) => match err {
-            UserRepositoryError::UserAlreadyExists=>Err(ApiError::ConflictError(err.to_string())),
-            UserRepositoryError::InternalServerError=>Err(ApiError::InternalServerError(err.to_string())),
-            UserRepositoryError::UserNotFound => Err(ApiError::InternalServerError("Internal server error".to_string())),
+            UserRepositoryError::UserAlreadyExists => Err(ApiError::ConflictError(err.to_string())),
+            UserRepositoryError::InternalServerError => {
+                Err(ApiError::InternalServerError(err.to_string()))
+            }
+            UserRepositoryError::UserNotFound => Err(ApiError::InternalServerError(
+                "Internal server error".to_string(),
+            )),
         },
     }
 }
@@ -65,7 +73,7 @@ pub async fn create_user<UR: UserRepository, TS: LoginTokenService>(
     tag = "auth",
     request_body = LoginCommand,
     responses(
-        (status = 200, description = "User logged in successfully", body = TokenResponseBody),
+        (status = 200, description = "User logged in successfully", body = ApiResponseBody<TokenResponseBody>),
         (status = 400, description = "Invalid credentials", body = ApiErrorBody,
             example = json!({
             "message": "Invalid username or password"
@@ -76,10 +84,10 @@ pub async fn create_user<UR: UserRepository, TS: LoginTokenService>(
         }))
     )
 )]
-pub async fn login_user<UR: UserRepository, TS: LoginTokenService>(
-    State(state): State<AppState<UR, TS>>,
+pub async fn login_user(
+    State(state): State<AppState>,
     ValidatedJson(body): ValidatedJson<LoginCommand>,
-) -> Result<(StatusCode, Json<TokenResponseBody>), ApiError> {
+) -> Result<(StatusCode, Json<ApiResponseBody<TokenResponseBody>>), ApiError> {
     match login_command_handler(
         body,
         state.user_repository.as_ref(),
@@ -87,7 +95,7 @@ pub async fn login_user<UR: UserRepository, TS: LoginTokenService>(
     )
     .await
     {
-        Ok(result) => Ok((StatusCode::OK, Json(TokenResponseBody::new(result)))),
+        Ok(result) => Ok((StatusCode::OK, Json(ApiResponseBody::new(TokenResponseBody::new(result))))),
         Err(err) => match err {
             UserLoginError::InvalidCredentials => Err(ApiError::BadRequestError(err.to_string())),
             UserLoginError::InternalServerError(msg) => Err(ApiError::InternalServerError(msg)),
@@ -110,14 +118,14 @@ pub async fn login_user<UR: UserRepository, TS: LoginTokenService>(
     ),
     security(("bearer_auth" = [])),
 )]
-pub async fn get_all_users<UR: UserRepository, TS: LoginTokenService>(
-    State(state): State<AppState<UR, TS>>,
+pub async fn get_all_users(
+    State(state): State<AppState>,
 ) -> Result<(StatusCode, Json<ApiResponseBody<Vec<GetAllUsersResult>>>), ApiError> {
     match get_all_users_query_handler(state.user_repository.as_ref()).await {
         Ok(users) => Ok((StatusCode::OK, ApiResponseBody::new(users).into())),
-        Err(err) => match err {
-            _ => Err(ApiError::InternalServerError("Internal server error".to_string())),
-        },
+        Err(_) => Err(ApiError::InternalServerError(
+            "Internal server error".to_string(),
+        )),
     }
 }
 
@@ -142,29 +150,31 @@ pub async fn get_all_users<UR: UserRepository, TS: LoginTokenService>(
     ),
     security(("bearer_auth" = [])),
 )]
-pub async fn get_user<UR: UserRepository, TS: LoginTokenService>(
-    State(state): State<AppState<UR, TS>>,
-    Path(id): Path<uuid::Uuid>,
+pub async fn get_user(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
 ) -> Result<(StatusCode, Json<ApiResponseBody<GetUserResult>>), ApiError> {
+    // Validate UUID format
+    let id = uuid::Uuid::parse_str(&id)
+        .map_err(|_| ApiError::BadRequestError("Invalid user ID format".to_string()))?;
+
     let query = GetUserQuery { id };
     match get_user_query_handler(query, state.user_repository.as_ref()).await {
         Ok(Some(user)) => Ok((StatusCode::OK, ApiResponseBody::new(user).into())),
         Ok(None) => Err(ApiError::NotFoundError("User not found".to_string())),
-        Err(err) => match err {
-            _ => Err(ApiError::InternalServerError("Internal server error".to_string())),
-        },
+        Err(_) => Err(ApiError::InternalServerError(
+            "Internal server error".to_string(),
+        )),
     }
 }
 
 // Users api routes
-pub fn api_routes<UR: UserRepository, TS: LoginTokenService>(
-    state: AppState<UR, TS>,
-) -> axum::Router<AppState<UR, TS>> {
+pub fn api_routes(state: AppState) -> axum::Router<AppState> {
     axum::Router::new()
-        .route("/", post(create_user::<UR, TS>))
+        .route("/", post(create_user))
         .route_layer(require_roles!(&[Role::Admin]))
-        .route("/", get(get_all_users::<UR, TS>))
-        .route("/{:id}", get(get_user::<UR, TS>))
+        .route("/", get(get_all_users))
+        .route("/{id}", get(get_user))
         .route_layer(protected!(state.clone()))
 }
 

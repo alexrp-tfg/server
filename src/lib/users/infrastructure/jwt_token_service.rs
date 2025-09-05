@@ -20,6 +20,12 @@ impl JwtTokenConfig {
     }
 }
 
+impl Default for JwtTokenConfig {
+    fn default() -> Self {
+        JwtTokenConfig::new()
+    }
+}
+
 #[derive(Clone)]
 pub struct JwtTokenService {
     config: JwtTokenConfig,
@@ -39,12 +45,12 @@ impl JWT {
         match encode(
             &Header::default(),
             &logged_user,
-            &EncodingKey::from_secret(&config.secret_key.as_ref()),
+            &EncodingKey::from_secret(config.secret_key.as_ref()),
         ) {
             Ok(token) => Ok(JWT(token)),
-            Err(_) => Err(UserLoginError::InternalServerError(format!(
-                "Failed to generate JWT token"
-            ))),
+            Err(_) => Err(UserLoginError::InternalServerError(
+                "Failed to generate JWT token".to_string(),
+            )),
         }
     }
 
@@ -55,7 +61,7 @@ impl JWT {
     pub fn validate(token: &str, config: &JwtTokenConfig) -> Result<Claims, UserLoginError> {
         jsonwebtoken::decode::<Claims>(
             token,
-            &jsonwebtoken::DecodingKey::from_secret(&config.secret_key.as_ref()),
+            &jsonwebtoken::DecodingKey::from_secret(config.secret_key.as_ref()),
             &Validation::default(),
         )
         .map_err(|_| UserLoginError::InvalidToken)

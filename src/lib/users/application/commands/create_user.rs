@@ -1,10 +1,10 @@
 use argon2::{Argon2, PasswordHasher};
-use password_hash::{rand_core::OsRng, SaltString};
+use password_hash::{SaltString, rand_core::OsRng};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use validator::Validate;
 
-use crate::users::domain::{user::NewUser, Role, User, UserRepository, UserRepositoryError};
+use crate::users::domain::{Role, User, UserRepository, UserRepositoryError, user::NewUser};
 
 #[derive(Debug, Validate, Deserialize, ToSchema)]
 pub struct CreateUserCommand {
@@ -23,13 +23,16 @@ pub struct CreateUserResult {
     pub updated_at: Option<chrono::NaiveDateTime>,
 }
 
-pub async fn create_user_command_handler<UR: UserRepository>(
+pub async fn create_user_command_handler(
     mut command: CreateUserCommand,
-    user_repository: &UR,
+    user_repository: &dyn UserRepository,
 ) -> Result<CreateUserResult, UserRepositoryError> {
-
     // Check if the user already exists
-    if user_repository.get_by_username(command.username.clone()).await?.is_some() {
+    if user_repository
+        .get_by_username(command.username.clone())
+        .await?
+        .is_some()
+    {
         return Err(UserRepositoryError::UserAlreadyExists);
     }
 

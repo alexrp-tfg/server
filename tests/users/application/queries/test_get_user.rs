@@ -4,7 +4,7 @@ use lib::users::{
 };
 use crate::users::MockUserRepository;
 use uuid::Uuid;
-use chrono::NaiveDateTime;
+use chrono::{NaiveDateTime, DateTime};
 
 #[tokio::test]
 async fn test_get_user_success() {
@@ -14,8 +14,8 @@ async fn test_get_user_success() {
         username: "alice".to_string(),
         password: "hashed_password".to_string(),
         role: Role::User,
-        created_at: Some(NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
-        updated_at: Some(NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
+        created_at: Some(DateTime::from_timestamp(0, 0).unwrap().naive_utc()),
+        updated_at: Some(DateTime::from_timestamp(0, 0).unwrap().naive_utc()),
     };
     let repo = MockUserRepository {
         user: Some(user.clone()),
@@ -70,8 +70,8 @@ async fn test_get_user_result_excludes_sensitive_data() {
         username: "testuser".to_string(),
         password: "super_secret_password".to_string(),
         role: Role::Admin,
-        created_at: Some(NaiveDateTime::from_timestamp_opt(123456789, 0).unwrap()),
-        updated_at: Some(NaiveDateTime::from_timestamp_opt(987654321, 0).unwrap()),
+        created_at: Some(DateTime::from_timestamp(123456789, 0).unwrap().naive_utc()),
+        updated_at: Some(DateTime::from_timestamp(987654321, 0).unwrap().naive_utc()),
     };
     let repo = MockUserRepository {
         user: Some(user.clone()),
@@ -104,16 +104,16 @@ async fn test_get_user_from_users_list() {
             username: "alice".to_string(),
             password: "hashed1".to_string(),
             role: Role::User,
-            created_at: Some(NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
-            updated_at: Some(NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
+            created_at: Some(DateTime::from_timestamp(0, 0).unwrap().naive_utc()),
+            updated_at: Some(DateTime::from_timestamp(0, 0).unwrap().naive_utc()),
         },
         User {
             id: user_id_2,
             username: "bob".to_string(),
             password: "hashed2".to_string(),
             role: Role::Admin,
-            created_at: Some(NaiveDateTime::from_timestamp_opt(1, 0).unwrap()),
-            updated_at: Some(NaiveDateTime::from_timestamp_opt(1, 0).unwrap()),
+            created_at: Some(DateTime::from_timestamp(1, 0).unwrap().naive_utc()),
+            updated_at: Some(DateTime::from_timestamp(1, 0).unwrap().naive_utc()),
         },
     ];
     let repo = MockUserRepository {
