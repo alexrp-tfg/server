@@ -41,7 +41,7 @@ impl HttpServer {
         dotenvy::dotenv().context("Failed to load .env file")?;
 
         let max_concurrent_requests = env::var("MAX_CONCURRENT_REQUESTS")
-            .unwrap_or_else(|_| "100".to_string())
+            .context("Failed to read MAX_CONCURRENT_REQUESTS from environment")?
             .parse::<usize>()
             .context("Failed to parse MAX_CONCURRENT_REQUESTS as usize")?;
 
